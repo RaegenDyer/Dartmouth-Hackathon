@@ -2,6 +2,10 @@
 
 - This repository is the Dartmouth hackathon companion project. Do not carry
   assumptions or credentials over from other projects.
+- Keep README.md presentable for public visitors: explain the product, current
+  capabilities, demo links, and a concise development quickstart. Put agent
+  handoffs, implementation status, validation history, deployment/account notes,
+  and collaborator decisions in the relevant docs/ files, not in the README.
 - Mandatory frontend design workflow: when frontend work is about to begin,
   reopen the style discussion with the collaborator currently requesting or
   leading that work. Any project collaborator may make the decision; approval
@@ -15,7 +19,7 @@
   they fit the current scope. Do not independently invent and implement a style
   in frontend code before this discussion and the collaborator's decision.
 - Record the deciding collaborator, selected generated concept(s), decision,
-  scope, and date in docs/design/README.md, and update the README checkpoint
+  scope, and date in docs/design/README.md, and update the relevant documentation
   before frontend implementation. If no collaborator decision is available,
   pause implementation; backend and nonvisual preparation may continue. A
   decision covers its agreed scope without repeating it for every component.
