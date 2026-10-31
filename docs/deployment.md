@@ -130,6 +130,11 @@ the shared serverless implementation remains work before a wider pilot.
 
 ## Failed builds and recovery
 
+The first Vercel attempt exposed a route-test fixture that relied on a
+nonproduction environment. The fixture now supplies and restores its own random
+test encryption key, so `npm run check` works with `NODE_ENV=production` without
+any runtime secrets. This does not configure or weaken the deployed data key.
+
 1. Open the failed deployment's build logs and identify the first failing step.
    Check Node 22, the repository root, and the exact environment-variable names.
 2. Correct the code or settings and redeploy the intended commit. Settings changes
