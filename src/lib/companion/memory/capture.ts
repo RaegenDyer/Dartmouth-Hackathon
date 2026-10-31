@@ -113,7 +113,9 @@ function splitSentences(text: string): string[] {
         // Split only clear independent clauses, keeping their explicit subject.
         // Never lift an apparent fact out of a quote, reported speech, or an "if".
         if (NON_FACT_CONTEXT.test(sentence)) return [sentence];
-        return sentence.split(/,?\s+but\s+|,?\s+and\s+(?=i\b|i['’]m\b|i['’]ve\b|my\b)/i);
+        // A list ("I work at X, I love Y") and a lead-in ("Quick update: I ...")
+        // split the same way, only where the next clause names its own subject.
+        return sentence.split(/,?\s+but\s+|(?:,?\s+and|,|:)\s+(?=i\b|i['’]m\b|i['’]ve\b|my\b)/i);
       })
       .map((sentence) => sentence.trim())
       .filter(Boolean)
@@ -145,7 +147,12 @@ export function isAllowedMemoryText(text: string): boolean {
 export function acceptableModelSuggestion(suggestion: string, userMessage: string): boolean {
   const text = suggestion.replace(/\s+/g, " ").trim();
   if (!text || text.length > LIMITS.maxMemoryLength || !/^(?:you|your|you're|you've)\b/i.test(text)) return false;
-  if (!isAllowedMemoryText(text) || captureDeclined(userMessage) || checkUserMessage(userMessage).triggered)
+  if (
+    !isAllowedMemoryText(text) ||
+    !isLastingFact(text) ||
+    captureDeclined(userMessage) ||
+    checkUserMessage(userMessage).triggered
+  )
     return false;
   const grounded = groundingWords(text);
   if (grounded.length === 0) return false;

@@ -397,7 +397,7 @@ export function createConversationService(deps: ConversationDeps) {
       return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
     });
     for (const candidate of candidates) {
-      if (proposed.length >= 2) break;
+      if (proposed.length >= MAX_SUGGESTIONS_PER_TURN) break;
       const signature = factSignature(candidate);
       if (
         signature.words.size > 0 &&
