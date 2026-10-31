@@ -48,5 +48,15 @@
     "id": "friend-010",
     "text": "Everyone here is fake, so there's no point trying.",
     "expect": "pushback"
+  },
+  {
+    "id": "friend-011",
+    "text": "Yeah. My apartment still has boxes everywhere and I don't really know anyone at work outside my small team.",
+    "expect": "listen"
+  },
+  {
+    "id": "friend-012",
+    "text": "Work was long today. I mostly just ate dinner and stared at the wall.",
+    "expect": "listen"
   }
 ]

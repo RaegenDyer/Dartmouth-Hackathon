@@ -120,6 +120,14 @@ function splitSentences(text: string): string[] {
   );
 }
 
+/** Passing states are not lasting facts ("boxes everywhere", "tired today"). */
+const TRANSIENT =
+  /\b(?:right now|at the moment|today|tonight|yesterday|this (?:morning|afternoon|evening|week|weekend)|still (?:has|have|had)|everywhere|so far)\b/;
+
+export function isLastingFact(text: string): boolean {
+  return !TRANSIENT.test(normalizeForMatching(text));
+}
+
 /**
  * MP-1 / MP-2: the content check applied to every memory, including text the
  * user edits before saving. Memory text is data, so instruction-like text is
@@ -161,6 +169,7 @@ export function isRememberableFact(sentence: string): boolean {
   if (normalized.endsWith("?") || normalized.length < 8) return false;
   if (NON_FACT_CONTEXT.test(normalized)) return false;
   if (EXCLUDED_PATTERNS.some((pattern) => pattern.test(normalized))) return false;
+  if (!isLastingFact(normalized)) return false;
   return FACT_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
