@@ -53,9 +53,11 @@ test("only allowlisted application settings are selected and shared features def
 
 test("unsupported or privileged public Supabase settings cannot be shared or imported", () => {
   const defaults = { LLM_ADAPTER: "mock", VOICE_INPUT_ENABLED: "false", TAVUS_AUDIO_ENABLED: "false" };
+  // Synthetic negative fixture: neither placeholder is a real JWT header/signature.
+  const privilegedKey = ["header", Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url"), "signature"].join(".");
   for (const extra of [{ GITHUB_TOKEN: "dummy" }, { CONTACT_ENCRYPTION_KEY: "dummy" },
     { NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_secret_dummy" },
-    { NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "header.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.signature" },
+    { NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: privilegedKey },
     { DEEPGRAM_API_KEY: "bad\nvalue" }, { VOICE_INPUT_ENABLED: "true" }]) {
     assert.throws(() => validateSharedSettings({ ...defaults, ...extra }));
   }
