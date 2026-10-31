@@ -1,0 +1,22 @@
+# Local credentials and environment files
+/credentials.env
+/credentials.*.env
+.env
+.env.*
+!.env.example
+
+# Local Vercel project configuration
+.vercel/
+
+# Dependencies and build output
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local tooling and logs
+npm-debug.log*
+.DS_Store
+Thumbs.db
