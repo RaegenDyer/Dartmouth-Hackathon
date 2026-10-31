@@ -5,7 +5,7 @@ keeps its original name, Dartmouth-Hackathon.
 
 ## Start here: agent handoff
 
-**Status as of October 30, 2026: the technical foundation is ready for feature
+**Status as of October 31, 2026: the technical foundation is ready for feature
 implementation. The app is not yet a working end-to-end product or a deployed
 website.** The foundation has been merged into `main` through PR #1.
 
@@ -26,13 +26,15 @@ style discussion, image-generated mockups informed by the
 | --- | --- | --- |
 | Application framework | Next.js/React/TypeScript app. `/` is the chat screen (direction 01 / Warm editorial): anonymous session start, conversation, message composer, crisis-resource view, memory suggestions to save/edit/dismiss, saved memories to delete, and sign-out. Without Supabase settings it shows setup instructions; health still runs credential-free. | Conversations/Saved/Settings screens; streaming replies; raster icons |
 | Anthropic | Credentials verified with a successful live text request. Server-only SDK client factory exists. | Connect the app to a model request/response flow; choose model and usage limits |
-| Supabase | Project access, a read-only SQL query, and authentication-configuration access verified. Browser/server client factories exist. Auth plumbing: session-refresh Proxy (`src/proxy.ts`), `getClaims()`-verified actor helper (`requireSession` in `src/lib/auth/server.ts`), same-origin mutation guard, `GET /api/auth/session`, `POST /api/auth/anonymous` (chosen local-testing sign-in, Oct 31), and `POST /api/auth/sign-out`; unit-tested with a mocked client and smoke-tested without credentials. | Turn on anonymous sign-ins and run `npm run verify:auth` against the hosted project; decide on permanent accounts for multi-day evaluation; Supabase-backed repositories and an applied schema |
-| Data model | Draft migration for profiles, conversations, messages, memory proposals, memories, and social actions; 37 isolated PostgreSQL behavior checks pass, including expiry and input-bound regressions. | Revise tables to match chosen features; verify real Supabase Auth/Data API behavior and concurrency before application |
+| Supabase | Anonymous sign-in enabled and verified live (`npm run verify:auth`, 16 checks). Session-refresh Proxy, `getClaims()`-verified actor with age gate and inactivity timeout, same-origin mutation guard, hardened cookies, and session/anonymous/sign-out routes. | Decide on permanent accounts so people can return across devices |
+| Data model | Migrations `202610300001` and `202610310001` applied to the Supabase project on 2026-10-31 (RLS on all 7 tables); 46 isolated PostgreSQL checks plus a live two-user isolation test. App text is encrypted before storage. | Durable turn claims and shared rate limits for multi-instance deployment |
 | Vercel | Account access verified; `vercel.json` configures Next.js, locked installation with build tools, and checks before building. [Deployment guide](docs/deployment.md) prepared. | Import the GitHub repository and create the project; initial foundation needs no app variables; no deployment has been performed |
 | GitHub | Public repository on `main`; access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
-| Companion core (milestone 1, step 1) | Server-side modules in `src/lib/companion`: `respond()` conversation service, safety pre/post checks and crisis view, memory store and fact-only capture as **proposals that the user approves** (nothing is saved automatically), code-enforced memory disclosure, weekly social-action scheduler, boundary rules (AI status, only-connection, dependence, prompt reveal), rate limiter, encrypted emergency contact, account-data deletion. Mocked and Anthropic LLM adapters. In-memory repositories. Authenticated route handlers for conversations, chat, memory proposals, and memories, backed by **process memory (local testing only; cleared on restart)**. Vitest unit/route tests and a deterministic eval suite (`evals/`). See the [milestone report](docs/milestone-1-report.md). | Supabase-backed repositories (required before any deployment), SSE streaming, version checks. The `eval-llm` run has not been executed yet. |
+| Companion core (milestone 1) | `src/lib/companion`: conversation service with the [guardrails](docs/guardrails.md) enforced in code, memory suggestions that the user approves, Supabase-backed storage (`supabase-store.ts`), and authenticated routes for conversations, chat, memories, and account deletion. Unit, route, schema, E2E, and mocked/LLM-judged evals pass. | SSE streaming and version checks; see [guardrails status](docs/guardrails-status.md) for partial items |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, validated runtime/build configuration, and provider factories; contract and configuration regression checks. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
-| Optional voice input | [Vapi architecture](docs/voice.md), session/provider interfaces, user-transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default. | Assistant/account setup, verified-user session bootstrap, actual SDK transport, no-spoken-reply/cost validation, and browser/device checks; no microphone or calls run yet |
+| Optional voice input | [Deepgram architecture](docs/voice.md), session/provider interfaces, mono-microphone transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default; Vapi retired. | Verified-user session bootstrap, actual audio transport, microphone controls, and browser/device checks; no live capture or provider connection yet |
+| Optional audio output | [Tavus architecture](docs/tavus.md), private audio-only request/response contracts, supplied-text Echo builder, session/playback interfaces, and isolated server settings. Disabled by default; no camera/video flow. | Verify Echo + audio-only together on the account, implement authenticated ownership/budgets and REST/RTC transport; no live sessions or playback yet |
+| Optional mascot | Cute, whimsical animal/creature preference recorded; mascot implementation is deferred while speech architecture is prepared. | Collaborator design discussion, image-generated character options, selection, and animation; no mascot assets or UI implemented |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Chat screen decided (01 / Warm editorial, Oct 31); other screens still need the collaborator design discussion; production raster icons still need generating |
 
 Chat works end to end locally. Conversations, memories, and suggestions are saved
@@ -53,8 +55,10 @@ and the pending collaborator style decision remain as documented above.
 Current local verification:
 
 - Clean dependency installation with `npm ci`.
-- `npm run check`: lint, TypeScript, 9 contract checks, 13 runtime/configuration
-  checks, 9 voice-input checks, and 37 isolated database checks. These require no
+- `npm run check`: lint, formatting, TypeScript, 178 Vitest unit tests,
+  9 contract checks, 16 runtime/configuration checks, 12 voice-input checks,
+  7 Tavus contract checks, 9 encrypted-environment checks, and 37 isolated
+  database checks. These require no
   service credentials or paid provider calls.
 - `npm run build`: production build.
 - `npm audit`: zero reported vulnerabilities after updating the lint toolchain's
@@ -62,6 +66,13 @@ Current local verification:
 - Local production-server smoke checks: preparation page and health endpoint
   succeed, unsupported health writes return 405, and the unimplemented chat
   endpoint returns 404.
+
+The October 31 review adds regressions for stale memory context after generation,
+overlapping turns, memory-limit races, mutable repository snapshots, provider
+outages, ignored model cancellation, and encrypted-settings import failures.
+Sign-out avoids a redundant claims lookup, and memory insertion no longer sorts
+and copies rows to check capacity. See the [review limits](docs/milestone-1-report.md#october-31-review-and-self-critique)
+before treating the in-memory services as production persistence.
 
 CI (`.github/workflows/ci.yml`) runs separate jobs named `lint` (ESLint and
 Prettier), `typecheck`, `unit` (Vitest plus the contract/runtime/schema checks),
@@ -117,11 +128,16 @@ commit here after the first hosted deployment is verified.
 
 The current idea is a nonclinical companion for adults settling into a new city
 or program, helping them build human connections. **Designed to be uninstalled**
-is a working principle. The product is named **Candid**; the chat-screen visual
-direction is decided, and detailed features are not finalized. Text input and text output are the working scope; optional
-speech-to-text input can be added later. Voice responses are not currently planned.
-Vapi is selected for that optional input path; its disabled architecture and
-transcript handling are prepared without a live provider connection.
+is a working principle. The product is named **Candid** (decided 2026-10-31); the
+chat-screen visual direction is decided, and detailed features are not finalized.
+Text input and text output are the working scope; optional speech-to-text input can
+be added later. On October 31, the owner dropped Vapi and chose a cute, whimsical
+animal/creature direction for an optional mascot. Deepgram is the selected
+speech-input provider; its disabled architecture and transcript handling are
+prepared without a live connection. The latest direction also prepares Tavus for
+optional audio-only supplied replies, while Gemini is deferred until credits are
+available. Video conversation is outside scope. Mascot work is deferred; the actual
+design still needs the collaborator-led image-generation discussion.
 
 ## Start locally
 
@@ -196,6 +212,7 @@ tests/unit/                  Vitest unit tests
 e2e/                         Playwright end-to-end tests
 evals/                       Eval datasets (data/), runner, and committed reports
 src/lib/voice/               Optional dictation ports, transcript buffer, server config
+src/lib/tavus/               Optional audio-output contracts, ports, server config
 supabase/migrations/         Reviewable database changes; not applied automatically
 docs/                        Architecture, contracts, decisions, implementation order
 .github/workflows/           Checks; no production deployment workflow yet
@@ -208,8 +225,14 @@ vercel.json                  Vercel framework, installation, and checked build
 - `.env.example`: safe names and empty values; committed for contributors.
 - `credentials.env`: local **management** access; ignored by Git and Vercel uploads.
 - GitHub Actions Secrets: `ANTHROPIC_API_KEY`, `VERCEL_TOKEN`,
-  `SUPABASE_ACCESS_TOKEN`, and `SUPABASE_PROJECT_REF` have been uploaded and their
-  presence verified. GitHub does not return their saved values to local clones.
+  `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `DEEPGRAM_API_KEY`,
+  `TAVUS_API_KEY`, and `TAVUS_PAL_ID` have been uploaded and their presence verified.
+  GitHub does not return their saved values to local clones.
+- `secrets/development.env.gpg`: encrypted application-only development settings
+  for collaborators. Use [the local secrets guide](docs/development-secrets.md).
+  Its separate unlock file `.secrets/development-env.key` stays private/ignored;
+  management tokens are excluded. `npm run env:pull` decrypts locally, and
+  `npm run env:pull -- --merge` preserves nonblank existing settings.
 - Vercel environment settings: only application runtime settings, once deployed.
 
 `GITHUB_TOKEN`, `VERCEL_TOKEN`, and `SUPABASE_ACCESS_TOKEN` must not be imported by

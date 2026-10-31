@@ -3,34 +3,77 @@ import test from "node:test";
 import {
   createDictationBuffer,
   MAX_DICTATION_CHARACTERS,
-  normalizeVapiTranscript,
+  normalizeDeepgramTranscript,
 } from "../src/lib/voice/input.ts";
 
-const message = { type: "transcript", role: "user", transcriptType: "partial", transcript: "Hello" };
+const message = {
+  type: "Results", is_final: false, channel_index: [0, 1],
+  channel: { alternatives: [{ transcript: "Hello" }] },
+};
 const event = (text, final = false) => ({ type: "transcript", text, final });
-
-test("Vapi user transcript events normalize finality and ignore extra provider metadata", () => {
-  assert.deepEqual(normalizeVapiTranscript({ ...message, transcript: "  Hello  ", callId: "ignored" }),
-    event("Hello"));
-  assert.deepEqual(normalizeVapiTranscript({ ...message, transcriptType: "final" }), event("Hello", true));
+const withText = (transcript) => ({
+  ...message, channel: { alternatives: [{ transcript }] },
 });
 
-test("assistant, model, tool, webhook, and malformed events never become user dictation", () => {
-  for (const input of [null, {}, { ...message, role: "assistant" }, { ...message, role: "system" },
-    { ...message, type: "model-output" }, { ...message, type: "tool-calls" },
-    { message }, { ...message, transcriptType: "unknown" }, { ...message, transcript: "  " },
-    { ...message, type: 'transcript[transcriptType="final"]' }]) {
-    assert.equal(normalizeVapiTranscript(input), null);
+test("Deepgram Results select the first alternative and ignore provider metadata", () => {
+  assert.deepEqual(normalizeDeepgramTranscript({
+    ...message, metadata: { request_id: "ignored" },
+    channel: { alternatives: [{ transcript: "  Hello  ", confidence: 0.9 }, { transcript: "Other" }] },
+  }), event("Hello"));
+  assert.deepEqual(normalizeDeepgramTranscript({ ...message, is_final: true }), event("Hello", true));
+});
+
+test("non-result, legacy provider, Flux, webhook, and malformed events are ignored", () => {
+  for (const input of [null, {}, { ...message, type: "Metadata" },
+    { ...message, type: "UtteranceEnd" }, { ...message, type: "TurnInfo" },
+    { message }, { type: "transcript", role: "user", transcriptType: "final", transcript: "Hello" },
+    { ...message, is_final: "true" }, { ...message, is_final: undefined },
+    { ...message, channel: null }, { ...message, channel: { alternatives: [] } },
+    { ...message, channel: { alternatives: [{}] } }]) {
+    assert.equal(normalizeDeepgramTranscript(input), null);
   }
+});
+
+test("empty transcript corrections clear only the provisional preview", () => {
+  const draft = createDictationBuffer("Committed");
+  draft.apply(event("incorrect preview"));
+  const emptyPartial = normalizeDeepgramTranscript(withText("  "));
+  assert.deepEqual(emptyPartial, event(""));
+  assert.equal(draft.apply(emptyPartial).text, "Committed");
+  assert.equal(draft.read().partialText, "");
+  draft.apply(event("another incorrect preview"));
+  const emptyFinal = normalizeDeepgramTranscript({ ...withText(""), is_final: true });
+  assert.deepEqual(emptyFinal, event("", true));
+  assert.equal(draft.apply(emptyFinal).text, "Committed");
+  assert.equal(draft.read().committedText, "Committed");
+  assert.equal(draft.read().partialText, "");
+});
+
+test("only explicit single-channel microphone results are accepted", () => {
+  for (const channel_index of [undefined, [], [0], [0, 2], [1, 2], [0, 1, 2], ["0", 1]]) {
+    assert.equal(normalizeDeepgramTranscript({ ...message, channel_index }), null);
+  }
+  assert.deepEqual(normalizeDeepgramTranscript(message), event("Hello"));
+});
+
+test("segment finality follows is_final rather than speech_final", () => {
+  assert.deepEqual(normalizeDeepgramTranscript({ ...message, speech_final: true }), event("Hello"));
+  const draft = createDictationBuffer();
+  draft.apply(normalizeDeepgramTranscript({ ...withText("First segment"), is_final: true, speech_final: false }));
+  draft.apply(normalizeDeepgramTranscript(withText("next preview")));
+  assert.equal(draft.read().text, "First segment next preview");
+  draft.apply(normalizeDeepgramTranscript({ ...withText("next segment"), is_final: true, speech_final: true }));
+  assert.equal(draft.read().text, "First segment next segment");
+  assert.equal(draft.read().partialText, "");
 });
 
 test("normalization rejects invalid or oversized text while retaining emoji and international text", () => {
   for (const transcript of ["before\u0000after", "before\ud800after", "before\udfffafter",
     "x".repeat(MAX_DICTATION_CHARACTERS + 1), 123]) {
-    assert.equal(normalizeVapiTranscript({ ...message, transcript }), null);
+    assert.equal(normalizeDeepgramTranscript(withText(transcript)), null);
   }
   const transcript = "Hello \ud83d\ude00\nCaf\u00e9 \u4f60\u597d";
-  assert.equal(normalizeVapiTranscript({ ...message, transcript }).text, transcript);
+  assert.equal(normalizeDeepgramTranscript(withText(transcript)).text, transcript);
 });
 
 test("partial updates replace the preview and final segments preserve previous committed text", () => {

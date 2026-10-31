@@ -41,11 +41,13 @@ export interface MemoryRepository {
    * cannot be rediscovered from older turns.
    */
   lastUserChangeAt(userId: string): Promise<Date | null>;
+  /** Monotonic mutation revision, including changes that restore identical text. */
+  contextRevision(userId: string): Promise<number>;
 }
 
 export function validateMemoryText(text: string): string {
   const trimmed = text.replace(/\s+/g, " ").trim();
-  if (!trimmed || trimmed.length > LIMITS.maxMemoryLength || trimmed.includes("\u0000")) {
+  if (!trimmed || trimmed.length > LIMITS.maxMemoryLength || trimmed.includes("\u0000") || !trimmed.isWellFormed()) {
     throw new MemoryError("INVALID_TEXT", `Memory text must be 1-${LIMITS.maxMemoryLength} characters.`);
   }
   return trimmed;
@@ -65,11 +67,21 @@ const clone = (memory: Memory): Memory => ({
 export class InMemoryMemoryRepository implements MemoryRepository {
   private readonly rows = new Map<string, Memory>();
   private readonly changes = new Map<string, Date>();
+  private readonly revisions = new Map<string, number>();
 
   constructor(private readonly clock: () => Date = () => new Date()) {}
 
   async lastUserChangeAt(userId: string) {
-    return this.changes.get(userId) ?? null;
+    const changedAt = this.changes.get(userId);
+    return changedAt ? new Date(changedAt) : null;
+  }
+
+  async contextRevision(userId: string) {
+    return this.revisions.get(userId) ?? 0;
+  }
+
+  private advanceRevision(userId: string) {
+    this.revisions.set(userId, (this.revisions.get(userId) ?? 0) + 1);
   }
 
   async list(userId: string) {
@@ -84,7 +96,10 @@ export class InMemoryMemoryRepository implements MemoryRepository {
   }
 
   async create(userId: string, text: string, now: Date, expiresAt: Date | null = null) {
-    const count = (await this.list(userId)).length;
+    // Keep count-and-insert synchronous: awaiting a list lets concurrent creates
+    // all see the same free slot. Counting also avoids sorting/cloning every row.
+    let count = 0;
+    for (const memory of this.rows.values()) if (memory.userId === userId) count += 1;
     if (count >= LIMITS.maxMemoriesPerUser) {
       throw new MemoryError("LIMIT_REACHED", `A user can keep at most ${LIMITS.maxMemoriesPerUser} memories.`);
     }
@@ -97,6 +112,7 @@ export class InMemoryMemoryRepository implements MemoryRepository {
       editedByUser: false,
     };
     this.rows.set(memory.id, memory);
+    this.advanceRevision(userId);
     return clone(memory);
   }
 
@@ -104,32 +120,38 @@ export class InMemoryMemoryRepository implements MemoryRepository {
     const memory = this.owned(userId, id);
     memory.text = validateMemoryText(text);
     memory.editedByUser = true;
-    this.changes.set(userId, this.clock());
+    this.changes.set(userId, new Date(this.clock()));
+    this.advanceRevision(userId);
     return clone(memory);
   }
 
   async setExpiry(userId: string, id: string, expiresAt: Date | null, now: Date) {
     const memory = this.owned(userId, id);
-    if (expiresAt && expiresAt.getTime() <= now.getTime()) {
+    if (expiresAt && (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= now.getTime())) {
       throw new MemoryError("INVALID_EXPIRY", "Expiry must be in the future, or cleared.");
     }
     memory.expiresAt = expiresAt ? new Date(expiresAt) : null;
     memory.editedByUser = true;
     this.changes.set(userId, new Date(now));
+    this.advanceRevision(userId);
     return clone(memory);
   }
 
   async delete(userId: string, id: string) {
     this.owned(userId, id);
     this.rows.delete(id);
-    this.changes.set(userId, this.clock());
+    this.changes.set(userId, new Date(this.clock()));
+    this.advanceRevision(userId);
   }
 
   async deleteAllForUser(userId: string) {
     for (const [id, memory] of this.rows) {
       if (memory.userId === userId) this.rows.delete(id);
     }
-    this.changes.delete(userId);
+    // Keep invalidation monotonic for turns that are already in flight. Clearing
+    // the memories must also prevent old transcript facts from entering context.
+    this.changes.set(userId, new Date(this.clock()));
+    this.advanceRevision(userId);
   }
 
   async deleteExpired(now: Date) {
@@ -137,6 +159,7 @@ export class InMemoryMemoryRepository implements MemoryRepository {
     for (const [id, memory] of this.rows) {
       if (isExpired(memory, now)) {
         this.rows.delete(id);
+        this.advanceRevision(memory.userId);
         removed += 1;
       }
     }

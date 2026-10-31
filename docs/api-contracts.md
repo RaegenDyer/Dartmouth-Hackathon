@@ -33,8 +33,8 @@ are in `src/lib/contracts/index.ts`.
 | Method and path | Input / output | Status |
 | --- | --- | --- |
 | `GET /api/health` | `{status:"ok",service:"dartmouth-hackathon",stage:"foundation"}` | Implemented; public liveness only |
-| `GET /api/auth/session` | `{authenticated:false}` or `{authenticated:true,userId,isAnonymous}` from verified claims; 503 if Supabase is not configured | Implemented |
-| `POST /api/auth/sign-out` | Same-origin only (403 otherwise); ends this browser's session; 204 | Implemented |
+| `GET /api/auth/session` | `{authenticated:false}` or `{authenticated:true,userId,isAnonymous,ageConfirmed}` from verified claims; 503 if Supabase is unconfigured or verification is unavailable | Implemented |
+| `POST /api/auth/sign-out` | Same-origin only (403 otherwise); ends this browser's session; 204 on success, safe 503 if sign-out cannot be confirmed | Implemented |
 | `POST /api/auth/anonymous` | Same-origin; body `{ageConfirmed:true}` (AA-1); starts or upgrades an anonymous session; 10 per IP per 10 min; 503 if anonymous sign-in is off | Implemented |
 | `GET /api/companion/status` | Public `{chatEnabled}` for the OP-1 kill switch | Implemented |
 | `DELETE /api/account` | Same-origin; deletes the user's app data (DP-5) and signs out; 204 | Local |

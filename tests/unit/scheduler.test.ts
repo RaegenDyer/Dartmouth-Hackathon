@@ -36,6 +36,17 @@ describe("weekly social action scheduler", () => {
     expect(results.filter(Boolean)).toHaveLength(1);
   });
 
+  it("does not let returned timestamps or suggestions bypass the weekly quota", async () => {
+    const repo = new InMemorySocialActionRepository();
+    const suggestion = await claimWeeklySuggestion(repo, "u1", start, []);
+    suggestion?.suggestedAt.setTime(start.getTime() - WEEK_MS);
+    expect(await claimWeeklySuggestion(repo, "u1", start, [])).toBeNull();
+    (await repo.lastSuggestedAt("u1"))?.setTime(0);
+    const listed = repo.all("u1");
+    listed[0]?.suggestedAt.setTime(0);
+    expect(await repo.lastSuggestedAt("u1")).toEqual(start);
+  });
+
   it("tracks users independently and prefers the user's stated plan", async () => {
     const repo = new InMemorySocialActionRepository();
     const planned = await claimWeeklySuggestion(repo, "u1", start, ["You want to try the pottery class."]);

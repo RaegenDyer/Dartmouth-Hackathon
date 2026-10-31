@@ -36,6 +36,11 @@ export async function refreshSupabaseSession(request: NextRequest) {
   );
 
   // Do not run code between client creation and this call; it performs the refresh.
-  await supabase.auth.getClaims();
+  try {
+    await supabase.auth.getClaims();
+  } catch {
+    // Refresh is best effort for public pages. Private routes independently
+    // verify identity and report an unavailable provider without granting access.
+  }
   return response;
 }

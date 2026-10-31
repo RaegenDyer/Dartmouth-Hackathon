@@ -29,19 +29,26 @@ export function isSocialActionDue(lastSuggestedAt: Date | null, now: Date): bool
   return lastSuggestedAt === null || now.getTime() - lastSuggestedAt.getTime() >= WEEK_MS;
 }
 
+const cloneSuggestion = (suggestion: SocialActionSuggestion): SocialActionSuggestion => ({
+  ...suggestion,
+  suggestedAt: new Date(suggestion.suggestedAt),
+});
+
 export class InMemorySocialActionRepository implements SocialActionRepository {
   private readonly history = new Map<string, SocialActionSuggestion[]>();
 
   async lastSuggestedAt(userId: string) {
     const items = this.history.get(userId) ?? [];
-    return items.at(-1)?.suggestedAt ?? null;
+    const last = items.at(-1)?.suggestedAt;
+    return last ? new Date(last) : null;
   }
 
   async recordIfDue(suggestion: SocialActionSuggestion) {
     // Check-and-insert happens synchronously, so concurrent callers cannot both record.
     const items = this.history.get(suggestion.userId) ?? [];
     if (!isSocialActionDue(items.at(-1)?.suggestedAt ?? null, suggestion.suggestedAt)) return false;
-    this.history.set(suggestion.userId, [...items, suggestion]);
+    items.push(cloneSuggestion(suggestion));
+    this.history.set(suggestion.userId, items);
     return true;
   }
 
@@ -50,7 +57,7 @@ export class InMemorySocialActionRepository implements SocialActionRepository {
   }
 
   all(userId: string) {
-    return [...(this.history.get(userId) ?? [])];
+    return (this.history.get(userId) ?? []).map(cloneSuggestion);
   }
 }
 

@@ -43,6 +43,8 @@ export interface ConversationDeps {
   policy?: GuardrailPolicy;
   /** DB-5 per-user redirect counts; pass a shared map to keep counts across service instances. */
   redirectCounts?: Map<string, number>;
+  /** Conversations with a turn in progress; pass a shared set across service instances. */
+  activeSessions?: Set<string>;
   now?: () => Date;
 }
 
@@ -78,7 +80,7 @@ function titleFrom(text: string): string {
 
 export class ConversationError extends Error {
   constructor(
-    readonly code: "SESSION_NOT_FOUND" | "INVALID_MESSAGE",
+    readonly code: "SESSION_NOT_FOUND" | "INVALID_MESSAGE" | "CONTEXT_CHANGED" | "TURN_IN_PROGRESS",
     message: string,
   ) {
     super(message);
@@ -97,12 +99,33 @@ export function createConversationService(deps: ConversationDeps) {
   const safety = deps.safety ?? patternClassifier;
   /** DB-5: redirect counts per user, logged without text. */
   const redirectCounts = deps.redirectCounts ?? new Map<string, number>();
+  // Prevent overlapping turns per conversation. Persistent repositories still
+  // need the durable turn claims described in docs/architecture.md.
+  const activeSessions = deps.activeSessions ?? new Set<string>();
+
+  async function assertCurrentContext(session: ChatSession, revision: number, active: readonly Memory[]) {
+    const [currentSession, currentRevision] = await Promise.all([
+      deps.sessions.get(session.id),
+      deps.memories.contextRevision(session.userId),
+    ]);
+    if (!currentSession) throw new ConversationError("SESSION_NOT_FOUND", "Session not found.");
+    const checkedAt = now().getTime();
+    if (
+      currentSession.endedBySafety ||
+      currentSession.tone !== session.tone ||
+      currentRevision !== revision ||
+      active.some((memory) => memory.expiresAt && memory.expiresAt.getTime() <= checkedAt)
+    ) {
+      throw new ConversationError("CONTEXT_CHANGED", "Your conversation context changed. Please try again.");
+    }
+  }
 
   async function crisisTurn(session: ChatSession, country: string | null, requestId?: string): Promise<RespondResult> {
     const at = now();
     // CS-7: timestamp and session ID only.
     deps.log({ event: "safety_triggered", at: at.toISOString(), sessionId: session.id });
     const crisis = buildCrisisView(await deps.contacts.getForCrisisView(session.userId), country);
+    if (!(await deps.sessions.get(session.id))) throw new ConversationError("SESSION_NOT_FOUND", "Session not found.");
     // CS-6: the crisis message text is never persisted and never becomes a memory.
     await deps.messages.append({
       sessionId: session.id,
@@ -200,12 +223,12 @@ export function createConversationService(deps: ConversationDeps) {
     );
   }
 
-  async function respond(sessionId: string, userMessage: string, options: RespondOptions = {}): Promise<RespondResult> {
+  async function respondTurn(sessionId: string, userMessage: string, options: RespondOptions): Promise<RespondResult> {
     const country = options.country ?? null;
     const session = await deps.sessions.get(sessionId);
     if (!session) throw new ConversationError("SESSION_NOT_FOUND", "Session not found.");
     const text = userMessage.trim();
-    if (!text || text.length > LIMITS.maxMessageLength || text.includes("\u0000")) {
+    if (!text || text.length > LIMITS.maxMessageLength || text.includes("\u0000") || !text.isWellFormed()) {
       throw new ConversationError("INVALID_MESSAGE", `Messages must be 1-${LIMITS.maxMessageLength} characters.`);
     }
 
@@ -221,6 +244,9 @@ export function createConversationService(deps: ConversationDeps) {
     }
 
     const at = now();
+    // Read before loading either memories or history so even an edit-and-revert
+    // during context loading/generation invalidates this turn.
+    const revision = await deps.memories.contextRevision(session.userId);
     const allMemories = await deps.memories.list(session.userId);
     const active = allMemories.filter((memory) => !memory.expiresAt || memory.expiresAt.getTime() > at.getTime());
     const priorReplies = (await deps.messages.listForSession(session.id))
@@ -255,6 +281,8 @@ export function createConversationService(deps: ConversationDeps) {
         memories: eligible.map(({ id, text: memoryText }) => ({ id, text: memoryText })),
         tone: session.tone,
       });
+      // Reject context changes detected after generation, before scheduling/writing.
+      await assertCurrentContext(session, revision, active);
       // CS-1/CS-2: post-check on the model reply, failing closed.
       const outputCheck = await runSafetyCheck(() => safety.checkReply(generated.text), LIMITS.safetyCheckTimeoutMs);
       if (outputCheck.failed)
@@ -277,6 +305,7 @@ export function createConversationService(deps: ConversationDeps) {
       modelSuggestions = (generated.memorySuggestions ?? []).filter((item) => acceptableModelSuggestion(item, text));
     }
     if (route !== "normal") {
+      await assertCurrentContext(session, revision, active);
       reply = enforceAiStatus(reply, askedIfHuman);
       // IS-1/IS-2 apply to fixed replies too, except DB-2's required question about one person.
       if (route !== "only_connection") reply = enforceInteractionStyle(reply, { userMessage: text, priorReplies });
@@ -362,6 +391,18 @@ export function createConversationService(deps: ConversationDeps) {
       social_action: socialAction,
       memory_proposals: proposed,
     };
+  }
+
+  async function respond(sessionId: string, userMessage: string, options: RespondOptions = {}): Promise<RespondResult> {
+    if (activeSessions.has(sessionId)) {
+      throw new ConversationError("TURN_IN_PROGRESS", "A reply is already being generated for this conversation.");
+    }
+    activeSessions.add(sessionId);
+    try {
+      return await respondTurn(sessionId, userMessage, options);
+    } finally {
+      activeSessions.delete(sessionId);
+    }
   }
 
   return { respond };

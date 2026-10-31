@@ -211,6 +211,13 @@ export function createSupabaseRepositories(db: SupabaseClient, ownerId: string, 
       );
       return (rows as Row[]).length;
     },
+    async contextRevision(userId) {
+      const row = must(
+        "profile read",
+        await db.from("profiles").select("memory_revision").eq("id", userId).maybeSingle(),
+      ) as Row | null;
+      return Number(row?.memory_revision ?? 0);
+    },
     async lastUserChangeAt(userId) {
       const row = must(
         "profile read",

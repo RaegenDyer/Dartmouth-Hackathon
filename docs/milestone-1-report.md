@@ -12,7 +12,7 @@ The stack already in this repository stays the same:
 | --- | --- | --- |
 | Frontend and backend | Next.js App Router, TypeScript (strict) | Unchanged |
 | Database | Supabase Postgres | Kept over SQLite/Docker because the repository already has a migration and 37 isolated schema checks. All companion data access goes through repository interfaces, with in-memory implementations for now. |
-| Auth | Supabase Auth (email and password) | Supabase hashes passwords with bcrypt and issues httpOnly session cookies through `@supabase/ssr`. This meets the hashing and cookie requirements without a second auth library. Not wired up yet. |
+| Auth | Supabase Auth | Session refresh, verified session inspection, and sign-out plumbing exist. The sign-in method is still open. The installed SSR SDK defaults to browser-readable cookies; an httpOnly session policy has not been implemented. |
 | LLM | Anthropic, server-only, through `src/lib/companion/llm` | Mock adapter by default (`LLM_ADAPTER=mock`) |
 | Tests | Vitest, Playwright | Added |
 | Evals | `evals/` data files and a runner | Added |
@@ -59,7 +59,7 @@ The stack already in this repository stays the same:
 
 ## What is stubbed or not yet built
 
-- Auth (sign up, log in, log out, emergency contact form), route handlers, the
+- Sign-up/log-in flows, emergency contact form, feature route handlers, the
   chat UI, the memory panel, and the account-deletion endpoint. The deletion
   logic exists but no authenticated route calls it yet. UI work waits on the
   frontend style decision in `docs/design/README.md`, which is still pending.
@@ -68,7 +68,8 @@ The stack already in this repository stays the same:
   only; a deployment with several instances needs a shared store.
 - E2E covers only the health endpoint and the home page. The five milestone
   flows are recorded as `test.fixme` and show as skipped.
-- `eval-llm` has never been run. This environment had no `ANTHROPIC_API_KEY`.
+- `eval-llm` has never been run. A model still needs to be selected before a live
+  evaluation is deliberately enabled.
 - Output escaping relies on React's default text rendering. That is still to be
   verified once the chat UI exists.
 - Branch protection on `main` must be set in the GitHub settings. The available
@@ -96,7 +97,7 @@ The stack already in this repository stays the same:
 
 | Test | Status |
 | --- | --- |
-| Unit: memory store, scheduler, safety classifier, disclosure enforcement, `respond()` | Passing (141 tests) |
+| Unit: companion services, auth boundaries, and model timeout | Passing (178 tests) |
 | eval-fast: safety recall 100%, benign false positives 0%, only-connection, human question, dependence, memory capture, disclosure, deletion, scenarios | Passing ([report](../evals/reports/eval-fast.md)) |
 | F1 round-trip under 10 seconds and the thread persists after reload | Not yet testable (no UI or database) |
 | F4 and the panel parts of F8 in the UI | Not built |
@@ -109,3 +110,38 @@ show the rules match the sets, not that they work in real use. The sets need
 phrasings written by people other than the authors before anyone relies on these
 numbers. Keyword safety detection is not reliable crisis detection, and this app
 must not claim that it is.
+
+## October 31 review and self-critique
+
+Regression fixes now cover concurrent memory creation exceeding the 50-item cap,
+invalid expiry dates and malformed Unicode, mutable Date/object references,
+stale session updates recreating deleted sessions, and context changes while a
+reply is generated. Overlapping turns are rejected within a service instance.
+Memory changes advance a monotonic revision; clearing all memories keeps a
+history cutoff so old transcript facts are not restored to model context.
+
+The first context check compared memory contents. Self-review exposed an edit
+followed by a revert within the same millisecond, which that approach missed;
+the revision check and a dedicated regression replace it. Context revisions and
+history cutoffs retain minimal invalidation state in the in-memory scaffold;
+production account deletion needs a bounded lifecycle for that state.
+
+The model deadline now returns a fallback even if an adapter ignores its abort
+signal. This bounds waiting, not provider execution or cost. The post-generation
+context check also precedes separate awaited suggestion/persistence operations;
+it is not a transaction and does not eliminate every deletion or expiry race.
+Production storage still requires durable turn claims, revision checks, and
+atomic commits. Future routes/UI must surface `TURN_IN_PROGRESS` as a conflict.
+
+Authentication now distinguishes provider unavailability from a missing/invalid
+session, keeps public pages available on refresh exceptions, and returns a safe
+503 when sign-out cannot be confirmed. Sign-out avoids a redundant claims
+lookup. The encrypted development importer requires successful GPG decryption
+and an ignored/untracked destination; tests also use Next.js's actual dotenv
+loader to catch values its expansion would corrupt. Dictation corrections can
+clear a revoked provisional preview without losing committed words.
+
+Verification uses synthetic fixtures and mocked providers. Hosted JWTs, database
+transactions/concurrency, browser audio, and the proposed approval-first memory
+flow remain integration/product work. No paid model or voice calls are required
+by these regression checks.

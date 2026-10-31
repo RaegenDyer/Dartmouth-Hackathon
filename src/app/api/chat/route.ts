@@ -53,6 +53,12 @@ export async function POST(request: Request) {
     if (error instanceof ConversationError && error.code === "INVALID_MESSAGE") {
       return apiError(400, "INVALID_REQUEST", error.message);
     }
+    if (error instanceof ConversationError && error.code === "CONTEXT_CHANGED") {
+      return apiError(409, "CONTEXT_CHANGED", error.message);
+    }
+    if (error instanceof ConversationError && error.code === "TURN_IN_PROGRESS") {
+      return apiError(409, "CONFLICT", error.message);
+    }
     if (error instanceof ConversationError) return apiError(404, "NOT_FOUND", "This conversation is not available.");
     consoleLogger({
       event: "route_error",

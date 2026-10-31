@@ -11,11 +11,14 @@ const transcriptSchema = z.strictObject({
   text: textSchema,
   final: z.boolean(),
 });
-const vapiTranscriptSchema = z.object({
-  type: z.literal("transcript"),
-  role: z.literal("user"),
-  transcriptType: z.enum(["partial", "final"]),
-  transcript: textSchema,
+const deepgramTranscriptSchema = z.object({
+  type: z.literal("Results"),
+  is_final: z.boolean(),
+  // This adapter is for a single microphone channel, not a mixed call stream.
+  channel_index: z.tuple([z.literal(0), z.literal(1)]),
+  channel: z.object({
+    alternatives: z.tuple([z.object({ transcript: textSchema })]).rest(z.unknown()),
+  }),
 });
 
 export type VoiceTranscriptEvent = z.infer<typeof transcriptSchema>;
@@ -25,7 +28,7 @@ export type VoiceInputEvent =
   | { type: "state"; state: VoiceInputState }
   | { type: "error"; code: "PERMISSION_DENIED" | "UNAVAILABLE" | "TIMEOUT" };
 
-// These are ports, not an implementation of a live Vapi/browser connection.
+// These are ports, not an implementation of a live Deepgram/browser connection.
 export interface VoiceInputSession {
   // Resolve only after a confirmed connection. Abort must stop pending/live work.
   start(options: { signal: AbortSignal; onEvent: (event: VoiceInputEvent) => void }): Promise<void>;
@@ -35,18 +38,18 @@ export interface VoiceInputSession {
 }
 
 export interface VoiceInputProvider {
-  readonly name: "vapi";
+  readonly name: "deepgram";
   createSession(): VoiceInputSession;
 }
 
-// Accept SDK message events only, not Vapi webhook envelopes or filtered event
-// subscriptions. Assistant/model/tool messages never become dictated user text.
-export function normalizeVapiTranscript(message: unknown): VoiceTranscriptEvent | null {
-  const result = vapiTranscriptSchema.safeParse(message);
+// Accept Deepgram Listen v1 Results from a microphone-only stream. Metadata,
+// Flux events, and provider/webhook envelopes require their own adapters.
+// is_final commits a segment; speech_final only marks an utterance boundary.
+export function normalizeDeepgramTranscript(message: unknown): VoiceTranscriptEvent | null {
+  const result = deepgramTranscriptSchema.safeParse(message);
   if (!result.success) return null;
-  const text = result.data.transcript.trim();
-  if (!text) return null;
-  return { type: "transcript", text, final: result.data.transcriptType === "final" };
+  const text = result.data.channel.alternatives[0].transcript.trim();
+  return { type: "transcript", text, final: result.data.is_final };
 }
 
 export interface DictationSnapshot {
@@ -103,7 +106,12 @@ export function createDictationBuffer(initialText = ""): DictationBuffer {
       const result = transcriptSchema.safeParse(event);
       if (!result.success) throw new TypeError("Invalid dictation transcript event.");
       const text = result.data.text.trim();
-      if (!text) return read();
+      if (!text) {
+        // An empty correction revokes only the uncommitted preview. Ignoring it
+        // would leave words visible after the provider stopped recognizing them.
+        partialText = "";
+        return read();
+      }
       // Validate the combined length before changing state. Partial text is a
       // replaceable preview; a final event commits one segment and clears it.
       const combined = appendSegment(committedText, text);

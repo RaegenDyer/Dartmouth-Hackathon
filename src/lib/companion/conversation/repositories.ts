@@ -51,6 +51,17 @@ export interface MessageRepository {
   deleteOlderThan(cutoff: Date, keptSessionIds: ReadonlySet<string>): Promise<number>;
 }
 
+const cloneSession = (session: ChatSession): ChatSession => ({
+  ...session,
+  startedAt: new Date(session.startedAt),
+  memoriesReferenced: [...session.memoriesReferenced],
+});
+
+const cloneMessage = (message: StoredMessage): StoredMessage => ({
+  ...message,
+  createdAt: new Date(message.createdAt),
+});
+
 export class InMemorySessionRepository implements SessionRepository {
   private readonly rows = new Map<string, ChatSession>();
 
@@ -68,23 +79,25 @@ export class InMemorySessionRepository implements SessionRepository {
       tone,
     };
     this.rows.set(session.id, session);
-    return { ...session };
+    return cloneSession(session);
   }
 
   async get(sessionId: string) {
     const session = this.rows.get(sessionId);
-    return session ? { ...session, memoriesReferenced: [...session.memoriesReferenced] } : null;
+    return session ? cloneSession(session) : null;
   }
 
   async update(session: ChatSession) {
-    this.rows.set(session.id, { ...session, memoriesReferenced: [...session.memoriesReferenced] });
+    const stored = this.rows.get(session.id);
+    if (!stored || stored.userId !== session.userId) throw new Error("Session not found.");
+    this.rows.set(session.id, cloneSession(session));
   }
 
   async listForUser(userId: string) {
     return [...this.rows.values()]
       .filter((session) => session.userId === userId)
       .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
-      .map((session) => ({ ...session, memoriesReferenced: [...session.memoriesReferenced] }));
+      .map(cloneSession);
   }
 
   async delete(userId: string, sessionId: string) {
@@ -110,13 +123,13 @@ export class InMemoryMessageRepository implements MessageRepository {
   private readonly rows: StoredMessage[] = [];
 
   async append(message: Omit<StoredMessage, "id">) {
-    const stored = { ...message, id: randomUUID() };
+    const stored = { ...message, createdAt: new Date(message.createdAt), id: randomUUID() };
     this.rows.push(stored);
-    return { ...stored };
+    return cloneMessage(stored);
   }
 
   async listForSession(sessionId: string) {
-    return this.rows.filter((message) => message.sessionId === sessionId).map((message) => ({ ...message }));
+    return this.rows.filter((message) => message.sessionId === sessionId).map(cloneMessage);
   }
 
   async deleteAllForUser(userId: string) {
@@ -143,6 +156,6 @@ export class InMemoryMessageRepository implements MessageRepository {
   }
 
   allForUser(userId: string) {
-    return this.rows.filter((message) => message.userId === userId);
+    return this.rows.filter((message) => message.userId === userId).map(cloneMessage);
   }
 }

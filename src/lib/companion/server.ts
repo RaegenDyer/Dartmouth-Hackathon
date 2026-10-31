@@ -35,7 +35,7 @@ export function isChatDisabled(env: Record<string, string | undefined> = process
 }
 
 /** Bump when the store's shape changes, so a dev hot reload rebuilds it. */
-const STORE_VERSION = 2;
+const STORE_VERSION = 3;
 
 /** Data that must survive across requests and dev hot reloads. */
 function createStore() {
@@ -48,6 +48,8 @@ function createStore() {
     turns: new Map<string, Promise<RespondResult>>(),
     /** DB-5 redirect counts per user. */
     redirectCounts: new Map<string, number>(),
+    /** Conversations with a turn in progress. */
+    activeSessions: new Set<string>(),
     /** Last retention run per user. */
     lastRetentionRun: new Map<string, number>(),
   };
@@ -94,6 +96,7 @@ export function getCompanion(caller: CompanionCaller) {
     log: consoleLogger,
     policy,
     redirectCounts: store.redirectCounts,
+    activeSessions: store.activeSessions,
   };
   return { ...store, deps, policy, ...createConversationService(deps) };
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { isAuthError, isAuthRetryableFetchError } from "@supabase/supabase-js";
 import type { ApiErrorCode } from "@/lib/contracts";
 import { policyFromEnvironment } from "@/lib/companion/limits";
 import { publicEnvironmentSchema } from "@/lib/env/public";
@@ -32,10 +33,20 @@ export async function getVerifiedSession(): Promise<{
   supabase: SupabaseClient;
 } | null> {
   if (!isAuthConfigured()) return null;
-  const supabase = await createRouteSupabaseClient();
-  const { data, error } = await supabase.auth.getClaims();
-  const session = error || !data ? null : sessionFromVerifiedClaims(data.claims);
-  return { session, supabase };
+  try {
+    const supabase = await createRouteSupabaseClient();
+    const { data, error } = await supabase.auth.getClaims();
+    if (isAuthRetryableFetchError(error) ||
+      (isAuthError(error) && error.status !== undefined && (error.status === 429 || error.status >= 500))) {
+      return null;
+    }
+    const session = error || !data ? null : sessionFromVerifiedClaims(data.claims);
+    return { session, supabase };
+  } catch {
+    // Provider failures are unavailable, not evidence that the user signed out.
+    // Keep provider diagnostics out of responses and framework error logs.
+    return null;
+  }
 }
 
 // AA-3: last activity per auth session. Process memory, like the rest of the

@@ -42,16 +42,29 @@ review reminder, not an automated block on a direct Git push.
 In Windows PowerShell, if execution policy blocks `npm.ps1`, use `npm.cmd`
 for these commands (for example, `npm.cmd ci`). No policy change is needed.
 
+The full checks also need Git and GnuPG; see the
+[local secrets guide](docs/development-secrets.md) for executable detection.
+Before the first local browser smoke test, run
+`npx playwright install chromium --only-shell`, then `npm run build` and
+`npm run test:e2e`. The five pending product flows remain explicitly skipped.
+
 For hosting setup, use [the Vercel deployment guide](docs/deployment.md).
 `vercel.json` runs the checks before building and includes development build
 tools during installation. The first foundation deployment needs no app keys.
 
 ## Working on live integrations
 
-Copy `.env.example` to `.env.local`. Get development application settings through
-the project owner using an approved private channel, or use your own development
-Anthropic key. A separate key in the funded workspace makes individual development
-access easier to revoke and attribute.
+For shared development settings, follow [the encrypted local setup guide](docs/development-secrets.md).
+Receive the unlock file privately from the project owner, save it under
+`.secrets/development-env.key`, and run `npm run env:pull` after cloning/pulling.
+Use `npm run env:pull -- --merge` to fill blank/missing values in an existing
+`.env.local`; nonblank local values are preserved. GitHub Actions Secrets cannot
+be downloaded to a laptop; this is a separate encrypted application-only bundle.
+
+You can also copy `.env.example` to `.env.local` and use your own development
+keys. A separate key in the funded workspace makes individual development access
+easier to revoke and attribute. Supabase public settings and the Anthropic model
+must be supplied when those integrations are enabled if still blank in the template.
 
 Only these values are application settings:
 
@@ -62,12 +75,17 @@ Only these values are application settings:
 | `ANTHROPIC_API_KEY` | Server only |
 | `ANTHROPIC_MODEL` | Server only; a model ID available to the configured workspace |
 | `VOICE_INPUT_ENABLED` | Optional server flag; defaults to `false`; configuration only |
-| `VAPI_PRIVATE_KEY` | Server only; optional while voice is disabled |
-| `VAPI_ASSISTANT_ID` | Server only; optional while voice is disabled |
+| `DEEPGRAM_API_KEY` | Server only; optional while voice is disabled |
+| `TAVUS_AUDIO_ENABLED` | Independent optional server flag; defaults to `false` |
+| `TAVUS_API_KEY` | Server only; optional while Tavus is disabled |
+| `TAVUS_PAL_ID` | Server only; preconfigured Echo PAL ID for future activation |
 
-The [Vapi voice-input preparation](docs/voice.md) adds no live calls or microphone
+The [Deepgram voice-input preparation](docs/voice.md) adds no live capture or microphone
 UI. Leave it disabled for text work. Its private configuration must not be sent
 to a browser, and enabling the flag alone does not implement the voice feature.
+The separate [Tavus audio-output architecture](docs/tavus.md) is also disabled.
+It prepares private audio-only sessions and supplied-text playback, with no
+camera capture or video UI. Live Echo/audio-only compatibility remains untested.
 
 Use an HTTP(S) Supabase URL and an `sb_publishable_` key; legacy `anon` JWTs
 also work. Secret keys and `service_role` JWTs are rejected. Both public settings

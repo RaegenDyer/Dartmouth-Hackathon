@@ -76,6 +76,9 @@ In Project Settings -> Environment Variables, add the values for the intended
 Production and/or Preview environment, then redeploy. GitHub Actions secrets are
 not automatically copied to Vercel. Keep production credentials out of untrusted
 preview builds; use designated development settings when previews need services.
+Collaborator laptop setup uses a separate [encrypted development bundle](development-secrets.md),
+not an export of GitHub Actions Secrets. Its unlock file and decrypted values
+stay out of Vercel source uploads.
 
 | Variable | Purpose |
 | --- | --- |
@@ -84,12 +87,18 @@ preview builds; use designated development settings when previews need services.
 | `ANTHROPIC_API_KEY` | Server-only app key, stored as a sensitive environment variable |
 | `ANTHROPIC_MODEL` | Model ID available to the configured Anthropic workspace |
 | `VOICE_INPUT_ENABLED` | Optional server flag; leave `false` while live voice is unimplemented |
-| `VAPI_PRIVATE_KEY` | Optional server-only Vapi key; never a public variable |
-| `VAPI_ASSISTANT_ID` | Optional server-only approved assistant UUID |
+| `DEEPGRAM_API_KEY` | Optional server-only Deepgram key; never a public variable |
+| `TAVUS_AUDIO_ENABLED` | Independent optional server flag; keep `false` during preparation |
+| `TAVUS_API_KEY` | Optional server-only Tavus key; never a public variable |
+| `TAVUS_PAL_ID` | Optional server-only Echo PAL ID |
 
 The [voice-input architecture](voice.md) remains disabled and makes no calls.
-The first foundation deployment needs no Vapi values. Enabling configuration
+The first foundation deployment needs no Deepgram values. Vapi is no longer used.
+Enabling configuration
 alone does not implement voice; use the documented activation work first.
+The separate [Tavus audio-only scaffold](tavus.md) also needs no settings for the
+first foundation deployment. Its mode combination, session ownership, and RTC
+transport need verification/implementation before enabling live playback.
 
 Configure the two public Supabase values together. Partial or privileged public
 configuration fails before bundling. Never add `GITHUB_TOKEN`, `VERCEL_TOKEN`,
