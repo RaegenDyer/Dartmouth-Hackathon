@@ -144,6 +144,48 @@ describe("companion routes", () => {
     expect(removed.status).toBe(204);
   });
 
+  it("validates saved-memory edits before writing and preserves ownership and origin checks", async () => {
+    currentUser = alice;
+    const conversationId = await newConversation();
+    const result = (await (await say(conversationId, "I like hiking.")).json()) as {
+      memoryProposals: { id: string }[];
+    };
+    const proposalId = result.memoryProposals[0]?.id as string;
+    const { accept, memory, memories } = await routes();
+    const saved = (await (
+      await accept.POST(
+        post(`/api/memory-proposals/${proposalId}/accept`, { content: "You like hiking.", keep: true }),
+        params(proposalId),
+      )
+    ).json()) as { memory: { id: string } };
+    const id = saved.memory.id;
+    const patch = (body: unknown, requestOrigin = origin) =>
+      memory.PATCH(
+        new Request(`${origin}/api/memories/${id}`, {
+          method: "PATCH",
+          headers: { origin: requestOrigin, "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+        params(id),
+      );
+
+    expect(
+      (await patch({ content: "You like chess.", expiresAt: new Date(Date.now() - 86_400_000).toISOString() })).status,
+    ).toBe(400);
+    expect((await patch({ content: "x".repeat(281) })).status).toBe(400);
+    expect((await (await memories.GET()).json()).memories).toMatchObject([
+      { id, text: "You like hiking.", expiresAt: null },
+    ]);
+    expect((await patch({ content: "You like chess." }, "https://example.invalid")).status).toBe(403);
+    currentUser = bob;
+    expect((await patch({ content: "You like chess." })).status).toBe(404);
+    currentUser = alice;
+    const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
+    const edited = await patch({ content: "You like chess.", expiresAt });
+    expect(edited.status).toBe(200);
+    expect(await edited.json()).toMatchObject({ memory: { id, text: "You like chess.", expiresAt } });
+  });
+
   it("hides one user's conversation and suggestions from another", async () => {
     currentUser = alice;
     const conversationId = await newConversation();

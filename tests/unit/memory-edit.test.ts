@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createInMemoryCompanion } from "@/lib/companion/in-memory";
 import { DAY_MS } from "@/lib/companion/limits";
 import { editMemory } from "@/lib/companion/memory/proposals";
@@ -52,5 +52,45 @@ describe("editing a saved memory (MP-3, MP-1/MP-2)", () => {
     await expect(editMemory(app.deps, "u2", memory.id, { text: "You like chess." }, now)).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
+  });
+
+  it.each([new Date(now.getTime() - DAY_MS), new Date(now.getTime() + 400 * DAY_MS), new Date("not a date")])(
+    "leaves all saved fields and context unchanged when a combined edit has an invalid expiry (%s)",
+    async (expiresAt) => {
+      const { app, memory } = await setup();
+      const revision = await app.deps.memories.contextRevision("u1");
+      const changedAt = await app.deps.memories.lastUserChangeAt("u1");
+      await expect(
+        editMemory(app.deps, "u1", memory.id, { text: "You like chess.", expiresAt }, now),
+      ).rejects.toMatchObject({ code: "INVALID_EXPIRY" });
+      expect(await app.deps.memories.list("u1")).toEqual([memory]);
+      expect(await app.deps.memories.contextRevision("u1")).toBe(revision);
+      expect(await app.deps.memories.lastUserChangeAt("u1")).toEqual(changedAt);
+    },
+  );
+
+  it("applies a valid combined edit once and preserves expiry on a later text-only edit", async () => {
+    const { app, memory } = await setup();
+    const update = vi.spyOn(app.deps.memories, "update");
+    const revision = await app.deps.memories.contextRevision("u1");
+    const expiresAt = new Date(now.getTime() + 30 * DAY_MS);
+    const edited = await editMemory(app.deps, "u1", memory.id, { text: "You like chess.", expiresAt }, now);
+    expect(edited).toMatchObject({ text: "You like chess.", expiresAt, editedByUser: true });
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(await app.deps.memories.contextRevision("u1")).toBe(revision + 1);
+    expiresAt.setUTCFullYear(2030);
+    expect((await app.deps.memories.list("u1"))[0]?.expiresAt).toEqual(edited.expiresAt);
+    expect((await editMemory(app.deps, "u1", memory.id, { text: "You like bouldering." }, now)).expiresAt).toEqual(
+      edited.expiresAt,
+    );
+  });
+
+  it("rejects empty updates and invalid repository updates without mutating anything", async () => {
+    const { app, memory } = await setup();
+    await expect(editMemory(app.deps, "u1", memory.id, {}, now)).rejects.toMatchObject({ code: "INVALID_TEXT" });
+    await expect(
+      app.deps.memories.update("u1", memory.id, { text: "You like chess.", expiresAt: new Date("bad") }, now),
+    ).rejects.toMatchObject({ code: "INVALID_EXPIRY" });
+    expect(await app.deps.memories.list("u1")).toEqual([memory]);
   });
 });

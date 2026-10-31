@@ -1,6 +1,6 @@
 # Evaluation report (fast)
 
-Generated 2026-10-31T13:22:48.850Z with the mocked LLM adapter.
+Generated 2026-10-31T13:22:25.644Z with the mocked LLM adapter.
 
 | Suite | Threshold | Result | Status |
 | --- | --- | --- | --- |

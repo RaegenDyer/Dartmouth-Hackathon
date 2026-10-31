@@ -9,6 +9,7 @@ import { checkUserMessage } from "../safety/classifier";
 /** First-person statements of fact that may be remembered. */
 const FACT_PATTERNS: readonly RegExp[] = [
   /^i (?:just |recently )?(?:moved|relocated) (?:to|here|from)\b/,
+  /^i(?:'ve| have) (?:just |recently )?(?:moved|relocated|started|joined|begun)\b/,
   /^i(?:'m| am) (?:from|originally from|living in|staying in|new to|studying|majoring in|starting|in (?:a|the|my) )/,
   /^i (?:live|work|study|volunteer) (?:in|at|with|on|near|for|as)\b/,
   /^i(?:'m| am) (?:a|an) (?:student|grad student|graduate student|phd student|nurse|teacher|engineer|developer|designer|resident|postdoc|first[- ]year|second[- ]year|new hire|intern)\b/,
@@ -51,7 +52,40 @@ const PRONOUNS: [RegExp, string][] = [
   [/\bme\b/g, "you"],
 ];
 
-const FILLER = /^(?:so|well|also|and|oh|btw|anyway),? /i;
+const FILLER = /^(?:(?:so|well|also|and|oh|btw|anyway|honestly|actually|basically|for context|by the way)[,:]?\s+)+/i;
+const NON_FACT_CONTEXT = /\b(?:if|unless|hypothetically|imagine|suppose|said|says|told|quoted)\b/i;
+const QUOTED_TEXT = /"[^"]*(?:"|$)|“[^”]*(?:”|$)|(?<![\p{L}\p{N}])['‘](?=\S)[\s\S]*?(?:['’](?=$|[\s.!?,])|$)/gu;
+const SAVE_REQUEST =
+  /^(?:(?:please\s+)?(?:remember|save)|(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:remember|save))\s+(?:that\s+)?(?=i\b|my\b)/i;
+
+function unwrapSaveRequest(sentence: string): string {
+  const text = sentence.trim().replace(FILLER, "");
+  const request = text.match(SAVE_REQUEST);
+  // A question about remembering can still contain an asserted fact. Only
+  // unwrap this explicit request form; ordinary questions remain ineligible.
+  return request ? text.slice(request[0].length).replace(/\?$/, ".") : sentence;
+}
+
+/** Do not prompt to save a message the person explicitly asks us not to keep. */
+function captureDeclined(text: string): boolean {
+  return /\b(?:don't|do not) (?:save|store|remember)\b|\boff the record\b|\bkeep this out of (?:your )?memor(?:y|ies)\b/.test(
+    normalizeForMatching(text),
+  );
+}
+
+const GROUNDING_FILLER_WORDS = new Set(
+  "i my me you your you're you've you'll you'd yourself a an the and or but to of in on at for with from by is are was were be been being it its this that these those as so just really very about into have has had do does did not never don't doesn't didn't can't won't isn't aren't wasn't weren't like love enjoy looking seeking interested".split(
+    " ",
+  ),
+);
+const NEGATED_FACT =
+  /\b(?:not|never|no|no longer|used to|hate|dislike|stopped|don't|doesn't|didn't|can't|won't|isn't|aren't|wasn't|weren't)\b/;
+
+function groundingWords(text: string): string[] {
+  return (normalizeForMatching(text).match(/[\p{L}\p{N}']+/gu) ?? []).filter(
+    (word) => !GROUNDING_FILLER_WORDS.has(word),
+  );
+}
 
 function toSecondPerson(sentence: string): string {
   let text = sentence
@@ -67,10 +101,23 @@ function toSecondPerson(sentence: string): string {
 }
 
 function splitSentences(text: string): string[] {
-  return text
-    .split(/(?<=[.!?;])\s+|\n+|,? but /)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
+  return (
+    text
+      // Mask entire quoted spans before sentence splitting, including quotes
+      // containing full stops. Any sentence touching a quote stays ineligible.
+      .replace(QUOTED_TEXT, (quoted) => (/[.!?]['’”"]$/.test(quoted) ? "\u0000." : "\u0000"))
+      .split(/(?<=[.!?;])\s+|\n+/)
+      .filter((sentence) => !sentence.includes("\u0000"))
+      .map(unwrapSaveRequest)
+      .flatMap((sentence) => {
+        // Split only clear independent clauses, keeping their explicit subject.
+        // Never lift an apparent fact out of a quote, reported speech, or an "if".
+        if (NON_FACT_CONTEXT.test(sentence)) return [sentence];
+        return sentence.split(/,?\s+but\s+|,?\s+and\s+(?=i\b|i['’]m\b|i['’]ve\b|my\b)/i);
+      })
+      .map((sentence) => sentence.trim())
+      .filter(Boolean)
+  );
 }
 
 /** Passing states are not lasting facts ("boxes everywhere", "tired today"). */
@@ -98,17 +145,29 @@ export function isAllowedMemoryText(text: string): boolean {
 export function acceptableModelSuggestion(suggestion: string, userMessage: string): boolean {
   const text = suggestion.replace(/\s+/g, " ").trim();
   if (!text || text.length > LIMITS.maxMemoryLength || !/^(?:you|your|you're|you've)\b/i.test(text)) return false;
-  if (!isAllowedMemoryText(text) || !isLastingFact(text) || checkUserMessage(userMessage).triggered) return false;
-  const said = new Set(normalizeForMatching(userMessage).match(/[a-z0-9']{3,}/g) ?? []);
-  const grounded = (normalizeForMatching(text).match(/[a-z0-9']{4,}/g) ?? []).filter(
-    (word) => !["your", "you're", "you've"].includes(word),
-  );
-  return grounded.some((word) => said.has(word));
+  if (!isAllowedMemoryText(text) || captureDeclined(userMessage) || checkUserMessage(userMessage).triggered)
+    return false;
+  const grounded = groundingWords(text);
+  if (grounded.length === 0) return false;
+  const negated = NEGATED_FACT.test(normalizeForMatching(text));
+  return splitSentences(userMessage).some((sentence) => {
+    const assertion = normalizeForMatching(sentence).replace(FILLER, "");
+    if (assertion.endsWith("?") || NON_FACT_CONTEXT.test(assertion)) return false;
+    // Do not turn a statement about "my friend" into one about the user.
+    if (!/^i\b/.test(assertion) && !(/^your\b/i.test(text) && /^my\b/.test(assertion))) return false;
+    if (NEGATED_FACT.test(assertion) !== negated) return false;
+    const said = new Set(groundingWords(assertion));
+    return grounded.every((word) => said.has(word));
+  });
 }
 
 export function isRememberableFact(sentence: string): boolean {
-  const normalized = normalizeForMatching(sentence).replace(FILLER, "");
+  const normalized = normalizeForMatching(sentence)
+    .replace(FILLER, "")
+    .replace(/^i (?:(?:really|especially|usually|often|currently)\s+)+/, "i ")
+    .replace(/^i('m| am) (?:(?:currently|really)\s+)+/, "i$1 ");
   if (normalized.endsWith("?") || normalized.length < 8) return false;
+  if (NON_FACT_CONTEXT.test(normalized)) return false;
   if (EXCLUDED_PATTERNS.some((pattern) => pattern.test(normalized))) return false;
   if (!isLastingFact(normalized)) return false;
   return FACT_PATTERNS.some((pattern) => pattern.test(normalized));
@@ -116,7 +175,7 @@ export function isRememberableFact(sentence: string): boolean {
 
 /** Returns at most two plain-language memories, written in the second person. */
 export function extractMemoryCandidates(userMessage: string): string[] {
-  if (checkUserMessage(userMessage).triggered) return [];
+  if (captureDeclined(userMessage) || checkUserMessage(userMessage).triggered) return [];
   const candidates: string[] = [];
   for (const sentence of splitSentences(userMessage)) {
     if (candidates.length >= 2) break;

@@ -11,7 +11,7 @@ import { MessageText } from "./message-text";
 /** MB-6. The server enforces the same limit. */
 const MAX_MESSAGE = 1000;
 
-type Status = "loading" | "chat-disabled" | "unconfigured" | "age-gate" | "under-18" | "ready";
+type Status = "loading" | "connection-error" | "chat-disabled" | "age-gate" | "under-18" | "ready";
 
 interface CrisisView {
   resources: { label: string; contact: string }[];
@@ -68,6 +68,17 @@ async function readError(response: Response): Promise<ApiErrorBody> {
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
 const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" });
+
+/** Date inputs use the person's calendar day, not the UTC date in an ISO timestamp. */
+function localCalendarDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function calendarDateAfterDays(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return localCalendarDate(date);
+}
 
 type IconName = "chat" | "memories" | "home" | "settings" | "mic";
 
@@ -141,6 +152,7 @@ function ChatDisabledNotice() {
 
 export function CompanionApp() {
   const [status, setStatus] = useState<Status>("loading");
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [hello, setHello] = useState("hello.");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -155,14 +167,26 @@ export function CompanionApp() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [confirmDeleteConversation, setConfirmDeleteConversation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [spaceRefreshError, setSpaceRefreshError] = useState<string | null>(null);
   /** Phone layout: which section fills the screen. Desktop shows all three. */
   const [tab, setTab] = useState<Tab>("chat");
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [laterIds, setLaterIds] = useState<Set<string>>(new Set());
-  const [editing, setEditing] = useState<{ id: string; text: string; keep: boolean; date: string } | null>(null);
+  const [editing, setEditing] = useState<{
+    id: string;
+    text: string;
+    keep: boolean;
+    date: string;
+    originalExpiresAt: string | null;
+  } | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  // A delayed reply must not take the reader away from older messages.
+  const followLatestRef = useRef(true);
 
   const resetChat = useCallback(() => {
+    followLatestRef.current = true;
     setConversationId(null);
     setMessages([]);
     setProposals([]);
@@ -171,6 +195,7 @@ export function CompanionApp() {
     setConfirmDelete(false);
     setConversations([]);
     setConfirmDeleteConversation(null);
+    setSpaceRefreshError(null);
   }, []);
 
   /** Moves the UI to the right screen for auth/kill-switch errors. Returns true if handled. */
@@ -201,44 +226,90 @@ export function CompanionApp() {
     return id;
   }, [handleGateError]);
 
-  const loadSpace = useCallback(async () => {
+  const loadSpace = useCallback(async (signal?: AbortSignal) => {
     const [proposalResponse, memoryResponse] = await Promise.all([
-      fetch("/api/memory-proposals"),
-      fetch("/api/memories"),
+      fetch("/api/memory-proposals", { signal }),
+      fetch("/api/memories", { signal }),
     ]);
-    if (proposalResponse.ok) setProposals(((await proposalResponse.json()) as { proposals: Proposal[] }).proposals);
-    if (memoryResponse.ok) setMemories(((await memoryResponse.json()) as { memories: SavedMemory[] }).memories);
+    if (signal?.aborted) return;
+    if (!proposalResponse.ok || !memoryResponse.ok)
+      throw new Error("Your saved memories and suggestions could not be loaded.");
+    const [proposalBody, memoryBody]: unknown[] = await Promise.all([proposalResponse.json(), memoryResponse.json()]);
+    const isProposal = (item: unknown): item is Proposal =>
+      !!item &&
+      typeof item === "object" &&
+      "id" in item &&
+      typeof item.id === "string" &&
+      "text" in item &&
+      typeof item.text === "string";
+    if (
+      !proposalBody ||
+      typeof proposalBody !== "object" ||
+      !("proposals" in proposalBody) ||
+      !Array.isArray(proposalBody.proposals) ||
+      !proposalBody.proposals.every(isProposal) ||
+      !memoryBody ||
+      typeof memoryBody !== "object" ||
+      !("memories" in memoryBody) ||
+      !Array.isArray(memoryBody.memories) ||
+      !memoryBody.memories.every(
+        (item: unknown): item is SavedMemory =>
+          isProposal(item) &&
+          "expiresAt" in item &&
+          (item.expiresAt === null ||
+            (typeof item.expiresAt === "string" && Number.isFinite(Date.parse(item.expiresAt)))),
+      )
+    )
+      throw new Error("Your saved memories and suggestions could not be loaded.");
+    if (signal?.aborted) return;
+    // Apply both lists together: a failed response must not look like an empty inbox.
+    setProposals(proposalBody.proposals);
+    setMemories(memoryBody.memories);
+    setSpaceRefreshError(null);
   }, []);
 
   /** Saved conversations, newest first. Returns false if a gate (age, kill switch) took over. */
-  const loadConversations = useCallback(async () => {
-    const response = await fetch("/api/conversations");
-    if (!response.ok) {
-      const body = await readError(response);
-      if (handleGateError(body)) return false;
-      throw new Error(body.error?.message ?? "Could not load your conversations.");
-    }
-    setConversations(((await response.json()) as { conversations: ConversationSummary[] }).conversations);
-    return true;
-  }, [handleGateError]);
+  const loadConversations = useCallback(
+    async (signal?: AbortSignal) => {
+      const response = await fetch("/api/conversations", { signal });
+      if (signal?.aborted) return false;
+      if (!response.ok) {
+        const body = await readError(response);
+        if (handleGateError(body)) return false;
+        throw new Error(body.error?.message ?? "Could not load your conversations.");
+      }
+      setConversations(((await response.json()) as { conversations: ConversationSummary[] }).conversations);
+      return true;
+    },
+    [handleGateError],
+  );
 
-  const enterApp = useCallback(async () => {
-    setError(null);
-    try {
-      if (!(await loadConversations())) return;
-      await loadSpace();
-      // A conversation is created when the first message is sent, so empty chats are not saved.
-      setConversationId(null);
-      setMessages([OPENING]);
-      setEnded(false);
-      setStatus("ready");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Something went wrong.");
-      setStatus("age-gate");
-    }
-  }, [loadConversations, loadSpace]);
+  const enterApp = useCallback(
+    async (signal?: AbortSignal) => {
+      setError(null);
+      try {
+        if (!(await loadConversations(signal))) return;
+        await loadSpace(signal);
+        if (signal?.aborted) return;
+        // A conversation is created when the first message is sent, so empty chats are not saved.
+        followLatestRef.current = true;
+        setConversationId(null);
+        setMessages([OPENING]);
+        setEnded(false);
+        setStatus("ready");
+      } catch (caught) {
+        if (signal?.aborted) return;
+        // Bootstrap owns its retry notice; a manual session start keeps the age gate.
+        if (signal) throw caught;
+        setError(caught instanceof Error ? caught.message : "Something went wrong.");
+        setStatus("age-gate");
+      }
+    },
+    [loadConversations, loadSpace],
+  );
 
   function newConversation() {
+    followLatestRef.current = true;
     setTab("chat");
     setConversationId(null);
     setMessages([OPENING]);
@@ -259,6 +330,7 @@ export function CompanionApp() {
       conversation: ConversationSummary;
       messages: { id: string; role: "user" | "assistant"; text: string }[];
     };
+    followLatestRef.current = true;
     setConversationId(id);
     setMessages(body.messages);
     setTab("chat");
@@ -273,25 +345,74 @@ export function CompanionApp() {
     }
     setConversations((current) => current.filter((item) => item.id !== id));
     if (id === conversationId) newConversation();
-    await loadSpace();
+    try {
+      await loadSpace();
+    } catch {
+      setSpaceRefreshError(
+        "The conversation was deleted, but memories and suggestions couldn't be refreshed. Reload to refresh them.",
+      );
+    }
   }
 
   useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    const timeout = window.setTimeout(() => controller.abort(), 15_000);
     setHello(greeting(new Date().getHours()));
+    setStatus("loading");
+    setError(null);
     void (async () => {
-      const state = (await (await fetch("/api/companion/status")).json()) as { chatEnabled: boolean };
-      if (!state.chatEnabled) return setStatus("chat-disabled");
-      const response = await fetch("/api/auth/session");
-      if (response.status === 503) return setStatus("unconfigured");
-      const body = (await response.json()) as { authenticated: boolean; ageConfirmed?: boolean };
-      if (body.authenticated && body.ageConfirmed) await enterApp();
-      else setStatus("age-gate");
+      try {
+        const statusResponse = await fetch("/api/companion/status", { signal: controller.signal });
+        if (!statusResponse.ok) throw new Error("Connection unavailable.");
+        const state: unknown = await statusResponse.json();
+        if (
+          !state ||
+          typeof state !== "object" ||
+          !("chatEnabled" in state) ||
+          typeof state.chatEnabled !== "boolean"
+        ) {
+          throw new Error("Invalid connection status.");
+        }
+        if (!active) return;
+        if (!state.chatEnabled) return setStatus("chat-disabled");
+        const response = await fetch("/api/auth/session", { signal: controller.signal });
+        if (!active) return;
+        if (!response.ok) throw new Error("Session unavailable.");
+        const body: unknown = await response.json();
+        if (
+          !body ||
+          typeof body !== "object" ||
+          !("authenticated" in body) ||
+          typeof body.authenticated !== "boolean"
+        ) {
+          throw new Error("Invalid session status.");
+        }
+        if (!active) return;
+        if (body.authenticated && "ageConfirmed" in body && body.ageConfirmed === true)
+          await enterApp(controller.signal);
+        else setStatus("age-gate");
+        if (controller.signal.aborted) throw new Error("Connection timed out.");
+      } catch {
+        if (active) setStatus("connection-error");
+      } finally {
+        window.clearTimeout(timeout);
+      }
     })();
-  }, [enterApp]);
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [enterApp, connectionAttempt]);
 
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
-  }, [messages]);
+    const log = logRef.current;
+    // Hidden phone/tablet panes have no usable scroll geometry.
+    if (log && log.clientHeight > 0 && followLatestRef.current) {
+      log.scrollTo({ top: log.scrollHeight });
+    }
+  }, [messages, sending, status, tab, proposals, savedIds, laterIds]);
 
   async function startSession() {
     setError(null);
@@ -321,6 +442,7 @@ export function CompanionApp() {
     event?.preventDefault();
     const content = draft.trim();
     if (!content || sending || content.length > MAX_MESSAGE) return;
+    followLatestRef.current = true;
     setSending(true);
     setError(null);
     let activeId = conversationId;
@@ -425,28 +547,54 @@ export function CompanionApp() {
   }
 
   function startEdit(memory: SavedMemory) {
-    const date = memory.expiresAt ? memory.expiresAt.slice(0, 10) : "";
-    setEditing({ id: memory.id, text: memory.text, keep: memory.expiresAt === null, date });
+    if (savingEdit) return;
+    setEditError(null);
+    const date = memory.expiresAt ? localCalendarDate(new Date(memory.expiresAt)) : "";
+    setEditing({
+      id: memory.id,
+      text: memory.text,
+      keep: memory.expiresAt === null,
+      date,
+      originalExpiresAt: memory.expiresAt,
+    });
   }
 
   async function saveEdit() {
-    if (!editing) return;
-    // The chosen date expires at the end of that local day.
-    const expiresAt = editing.keep
-      ? null
-      : editing.date
-        ? new Date(`${editing.date}T23:59:59`).toISOString()
-        : undefined;
-    if (!editing.keep && !expiresAt) return setError("Choose an expiry date, or keep it until you delete it.");
-    const response = await fetch(
-      `/api/memories/${editing.id}`,
-      jsonInit("PATCH", { content: editing.text.trim(), expiresAt }),
-    );
-    if (!response.ok) return setError((await readError(response)).error?.message ?? "That memory could not be saved.");
-    const { memory } = (await response.json()) as { memory: SavedMemory };
-    setMemories((current) => current.map((item) => (item.id === memory.id ? memory : item)));
-    setEditing(null);
-    setError(null);
+    if (!editing || savingEdit) return;
+    const originalDate = editing.originalExpiresAt ? localCalendarDate(new Date(editing.originalExpiresAt)) : "";
+    const expiryChanged =
+      editing.keep !== (editing.originalExpiresAt === null) || (!editing.keep && editing.date !== originalDate);
+    let expiresAt: string | null | undefined;
+    if (!editing.keep) {
+      // Reject invalid/normalized calendar dates before calling toISOString.
+      const chosen = new Date(`${editing.date}T23:59:59`);
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(editing.date) ||
+        !Number.isFinite(chosen.getTime()) ||
+        localCalendarDate(chosen) !== editing.date
+      ) {
+        return setEditError("Choose a valid expiry date, or keep it until you delete it.");
+      }
+      if (expiryChanged) expiresAt = chosen.toISOString();
+    } else if (expiryChanged) expiresAt = null;
+    setSavingEdit(true);
+    setEditError(null);
+    try {
+      const response = await fetch(
+        `/api/memories/${editing.id}`,
+        // A text-only edit must retain the exact stored expiry, including its time.
+        jsonInit("PATCH", { content: editing.text.trim(), ...(expiresAt === undefined ? {} : { expiresAt }) }),
+      );
+      if (!response.ok)
+        return setEditError((await readError(response)).error?.message ?? "That memory could not be saved.");
+      const { memory } = (await response.json()) as { memory: SavedMemory };
+      setMemories((current) => current.map((item) => (item.id === memory.id ? memory : item)));
+      setEditing(null);
+    } catch {
+      setEditError("That memory could not be saved. Check your connection and try again.");
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   if (status === "chat-disabled") return <ChatDisabledNotice />;
@@ -463,13 +611,13 @@ export function CompanionApp() {
           <span className="subline">how was today?</span>
         </h1>
         {status === "loading" && <p aria-live="polite">Loading…</p>}
-        {status === "unconfigured" && (
-          <div className="notice" role="status">
-            <h2>sign-in isn&apos;t set up on this computer yet</h2>
-            <p>
-              Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code> to{" "}
-              <code>.env.local</code>, then restart the app.
-            </p>
+        {status === "connection-error" && (
+          <div className="notice" role="alert">
+            <h2>we couldn&apos;t connect just now</h2>
+            <p>Check your connection and try again. Your saved conversations and memories haven&apos;t been changed.</p>
+            <button type="button" className="primary" onClick={() => setConnectionAttempt((attempt) => attempt + 1)}>
+              Try again
+            </button>
           </div>
         )}
         {status === "age-gate" && (
@@ -514,7 +662,6 @@ export function CompanionApp() {
   const pendingCount = proposals.length;
   const showMemories = () => {
     setTab("memories");
-    document.getElementById("space-title")?.scrollIntoView({ block: "nearest" });
   };
 
   function InlineProposal({ proposal }: { proposal: Proposal }) {
@@ -627,19 +774,34 @@ export function CompanionApp() {
         <Link className="app-home mobile-home" href="/" aria-label="Back to home">
           Home
         </Link>
+        {spaceRefreshError && (
+          <span className="error" role="alert">
+            {spaceRefreshError}
+          </span>
+        )}
       </p>
 
-      <aside className="rail" aria-label="Conversations and account">
+      <aside className="rail" aria-label="Conversations and account" tabIndex={0}>
         <Wordmark />
         <button type="button" className="primary" onClick={newConversation}>
           new conversation
         </button>
         <nav className="rail-nav" aria-label="Sections">
-          <button type="button" className="rail-link on" onClick={() => setTab("chat")}>
+          <button
+            type="button"
+            className={`rail-link${tab === "chat" ? " on" : ""}`}
+            aria-current={tab === "chat" ? "page" : undefined}
+            onClick={() => setTab("chat")}
+          >
             <Icon name="chat" />
             chat
           </button>
-          <button type="button" className="rail-link" onClick={showMemories}>
+          <button
+            type="button"
+            className={`rail-link${tab === "memories" ? " on" : ""}`}
+            aria-current={tab === "memories" ? "page" : undefined}
+            onClick={showMemories}
+          >
             <Icon name="memories" />
             memories
             {pendingCount > 0 && <span className="count">{pendingCount} new</span>}
@@ -704,7 +866,20 @@ export function CompanionApp() {
         </header>
 
         <section className="chat" aria-label="Conversation">
-          <div className="log" role="log" aria-live="polite" ref={logRef}>
+          <div
+            className="log"
+            role="log"
+            aria-label="Conversation messages"
+            aria-live="polite"
+            tabIndex={0}
+            ref={logRef}
+            onScroll={(event) => {
+              const log = event.currentTarget;
+              if (log.clientHeight > 0) {
+                followLatestRef.current = log.scrollHeight - log.scrollTop - log.clientHeight < 64;
+              }
+            }}
+          >
             {messages.map((message) => {
               const { body, step } =
                 message.role === "assistant" && !message.crisis
@@ -835,7 +1010,7 @@ export function CompanionApp() {
         </section>
       </main>
 
-      <aside className="space" aria-labelledby="space-title">
+      <aside className="space" aria-labelledby="space-title" tabIndex={0}>
         <span className="label">your space</span>
         <h2 id="space-title" className="heading-icon">
           <Icon name="memories" size={26} />
@@ -909,9 +1084,10 @@ export function CompanionApp() {
                       rows={2}
                       maxLength={280}
                       value={editing.text}
+                      disabled={savingEdit}
                       onChange={(event) => setEditing({ ...editing, text: event.target.value })}
                     />
-                    <fieldset className="expiry-choice">
+                    <fieldset className="expiry-choice" disabled={savingEdit}>
                       <legend className="label">how long to keep it</legend>
                       <label className="keep">
                         <input
@@ -934,17 +1110,27 @@ export function CompanionApp() {
                           type="date"
                           aria-label="Expiry date"
                           value={editing.date}
-                          min={new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)}
-                          max={new Date(Date.now() + 365 * 86_400_000).toISOString().slice(0, 10)}
+                          min={calendarDateAfterDays(0)}
+                          max={calendarDateAfterDays(365)}
                           onChange={(event) => setEditing({ ...editing, keep: false, date: event.target.value })}
                         />
                       </label>
                     </fieldset>
+                    {editError && (
+                      <p className="error" role="alert">
+                        {editError}
+                      </p>
+                    )}
                     <div className="actions">
-                      <button type="submit" className="soft small save">
-                        save changes
+                      <button type="submit" className="soft small save" disabled={savingEdit}>
+                        {savingEdit ? "saving…" : "save changes"}
                       </button>
-                      <button type="button" className="ghost small" onClick={() => setEditing(null)}>
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={() => setEditing(null)}
+                        disabled={savingEdit}
+                      >
                         cancel
                       </button>
                     </div>
@@ -963,6 +1149,7 @@ export function CompanionApp() {
                         type="button"
                         className="ghost small"
                         onClick={() => startEdit(memory)}
+                        disabled={savingEdit}
                         aria-label={`Edit memory: ${memory.text}`}
                       >
                         edit

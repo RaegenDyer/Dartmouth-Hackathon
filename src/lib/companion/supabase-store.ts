@@ -4,7 +4,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { openText, sealText } from "@/lib/crypto/seal";
 import type { ChatSession, MessageRepository, SessionRepository, StoredMessage } from "./conversation/repositories";
 import { MAX_PENDING_PROPOSALS, type MemoryProposal, type MemoryProposalRepository } from "./memory/proposals";
-import { MemoryError, isExpired, validateMemoryText, type Memory, type MemoryRepository } from "./memory/store";
+import {
+  MemoryError,
+  isExpired,
+  validateMemoryText,
+  validateMemoryUpdate,
+  type Memory,
+  type MemoryRepository,
+} from "./memory/store";
 import type { EmergencyContactRepository } from "./safety/contact";
 import type { EmergencyContactView } from "./safety/crisis";
 import { isSocialActionDue, type SocialActionRepository, type SocialActionSuggestion } from "./scheduler/weekly";
@@ -188,14 +195,18 @@ export function createSupabaseRepositories(db: SupabaseClient, ownerId: string, 
       // The database only creates memories through accept_memory_proposal.
       throw new MemoryError("INVALID_TEXT", "Memories are saved only by approving a suggestion.");
     },
-    async updateText(_userId, id, text) {
-      return ownedMemoryUpdate(id, { content: seal(validateMemoryText(text)) });
+    async update(_userId, id, input, now) {
+      const changes = validateMemoryUpdate(input, now);
+      const columns: Row = {};
+      if (changes.text !== undefined) columns.content = seal(changes.text);
+      if (changes.expiresAt !== undefined) columns.expires_at = changes.expiresAt?.toISOString() ?? null;
+      return ownedMemoryUpdate(id, columns);
     },
-    async setExpiry(_userId, id, expiresAt, now) {
-      if (expiresAt && expiresAt.getTime() <= now.getTime()) {
-        throw new MemoryError("INVALID_EXPIRY", "Expiry must be in the future, or cleared.");
-      }
-      return ownedMemoryUpdate(id, { expires_at: expiresAt?.toISOString() ?? null });
+    async updateText(userId, id, text) {
+      return memories.update(userId, id, { text }, new Date());
+    },
+    async setExpiry(userId, id, expiresAt, now) {
+      return memories.update(userId, id, { expiresAt }, now);
     },
     async delete(_userId, id) {
       const rows = must("memory delete", await db.from("memories").delete().eq("id", id).select("id"));

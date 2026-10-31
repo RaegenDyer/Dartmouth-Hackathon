@@ -127,22 +127,25 @@ export async function editMemory(
   input: { text?: string; expiresAt?: Date | null },
   now: Date,
 ): Promise<Memory> {
-  let memory: Memory | null = null;
+  const changes: { text?: string; expiresAt?: Date | null } = {};
   if (input.text !== undefined) {
     const text = validateMemoryText(input.text);
     if (!isAllowedMemoryText(text)) throw new MemoryError("INVALID_TEXT", DISALLOWED_MEMORY_MESSAGE);
-    memory = await deps.memories.updateText(userId, memoryId, text);
+    changes.text = text;
   }
   if (input.expiresAt !== undefined) {
     const expiresAt = input.expiresAt;
     if (
-      expiresAt &&
-      (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() - now.getTime() > MAX_CUSTOM_EXPIRY_MS)
+      expiresAt !== null &&
+      (!Number.isFinite(expiresAt.getTime()) ||
+        expiresAt.getTime() <= now.getTime() ||
+        expiresAt.getTime() - now.getTime() > MAX_CUSTOM_EXPIRY_MS)
     ) {
       throw new MemoryError("INVALID_EXPIRY", "Choose a date within the next year, or keep it until you delete it.");
     }
-    memory = await deps.memories.setExpiry(userId, memoryId, expiresAt, now);
+    changes.expiresAt = expiresAt;
   }
-  if (!memory) throw new MemoryError("INVALID_TEXT", "Nothing to change.");
-  return memory;
+  // A rejected expiry must not leave the text saved, and a valid combined edit
+  // is one database statement so a second write cannot fail halfway through.
+  return deps.memories.update(userId, memoryId, changes, now);
 }

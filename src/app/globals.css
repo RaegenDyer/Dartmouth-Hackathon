@@ -275,6 +275,9 @@ button:disabled {
 .notice p {
   color: var(--muted);
 }
+.notice > .primary {
+  margin-top: 14px;
+}
 .crisis-notice {
   border-color: var(--action);
 }
@@ -296,14 +299,18 @@ button:disabled {
 
 /* Signed-in shell. Desktop: notice across the top, then rail | chat | memories. */
 .shell {
+  /* Include absolute accessibility labels in the app's viewport clipping. */
+  position: relative;
   display: grid;
   grid-template-columns: 252px minmax(0, 1fr) 300px;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
     "notice notice notice"
     "rail chat space";
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
 }
 .poc-notice {
   grid-area: notice;
@@ -335,6 +342,11 @@ button:disabled {
   gap: 14px;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+.rail > *,
+.space > * {
+  flex-shrink: 0;
 }
 .rail-nav {
   display: grid;
@@ -440,11 +452,13 @@ button:disabled {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .mobile-brand {
   display: none;
 }
 .today-header {
+  flex-shrink: 0;
   display: grid;
   gap: 8px;
   padding: 28px clamp(16px, 3vw, 36px) 12px;
@@ -459,11 +473,16 @@ button:disabled {
   flex-direction: column;
   gap: 12px;
   padding: 8px clamp(16px, 3vw, 36px) 22px;
+  overflow: hidden;
+}
+.chat > :not(.log) {
+  flex-shrink: 0;
 }
 .log {
+  /* Keep absolute screen-reader labels inside this scroller's clipping box. */
+  position: relative;
   flex: 1;
-  min-height: 300px;
-  max-height: 62vh;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -472,6 +491,7 @@ button:disabled {
   overscroll-behavior: contain;
 }
 .turn {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -527,6 +547,7 @@ button:disabled {
   display: grid;
   gap: 8px;
   font-size: 15px;
+  overflow-wrap: anywhere;
 }
 .card.remember {
   background: var(--sage-soft);
@@ -584,7 +605,7 @@ button:disabled {
   font-size: 16px; /* 16px keeps iOS from zooming on focus */
   resize: none;
   min-height: 44px;
-  max-height: 10rem;
+  max-height: min(10rem, 25dvh);
   field-sizing: content;
   padding: 11px 0;
   border: 0;
@@ -615,6 +636,12 @@ button:disabled {
   gap: 10px;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+.rail:focus-visible,
+.space:focus-visible,
+.log:focus-visible {
+  outline-offset: -2px;
 }
 .space h2 {
   margin: 0;
@@ -643,6 +670,7 @@ button:disabled {
   display: grid;
   gap: 8px;
   font-size: 14.5px;
+  overflow-wrap: anywhere;
 }
 .proposal {
   background: var(--sage-soft);
@@ -830,13 +858,18 @@ button:disabled.mic {
     grid-template-columns: 236px minmax(0, 1fr);
     grid-template-areas:
       "notice notice"
-      "rail chat"
-      "rail space";
-    grid-template-rows: auto minmax(0, 1fr) auto;
+      "rail chat";
   }
   .space {
+    grid-area: chat;
+    display: none;
     border-left: 0;
-    border-top: 1px solid var(--line);
+  }
+  .shell[data-tab="memories"] .chat-pane {
+    display: none;
+  }
+  .shell[data-tab="memories"] .space {
+    display: flex;
   }
 }
 
@@ -926,7 +959,6 @@ button:disabled.mic {
     padding-bottom: 2px;
   }
   .log {
-    max-height: none;
     min-height: 0;
   }
   .bubble,
@@ -980,6 +1012,25 @@ button:disabled.mic {
     margin-left: -12px;
     border-radius: 3px;
     background: var(--action);
+  }
+}
+
+/* Keep typing and the conversation reachable in short windows / phone landscape. */
+@media (max-height: 600px) {
+  .today-header {
+    gap: 4px;
+    padding: 10px 16px 4px;
+  }
+  .today-header h1 {
+    font-size: 24px;
+  }
+  .today-header h1 .subline {
+    display: inline;
+    margin-left: 0.3em;
+  }
+  .scenarios,
+  .composer .hint {
+    display: none;
   }
 }
 

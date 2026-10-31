@@ -12,6 +12,13 @@ The existing data key was recovered and checked against three existing encrypted
 records. The hosted schema already has the Unicode ciphertext-capacity fix.
 All 32 hosted activation checks passed; both disposable test users were removed.
 
+The later UI work from Neeraj is merged through PR #6 (`2d7d6ca`): Warm hearth,
+phone tabs, raster icons, saved-memory editing/custom expiry, and labeled
+coming-soon controls. The [UI/memory quality pass](docs/milestone-1-report.md#october-31-ui-and-memory-quality-pass)
+fixes missed/over-deduplicated memory suggestions, nested page/chat scrolling,
+partial memory edits, local-calendar expiry handling, and recoverable loading
+failures while retaining that design and the public landing/app split.
+
 **Current user direction:** prioritize reusable capabilities and preparation for
 multiple contributors. Product features are exploratory and mutable. Treat the
 feature sketches, database draft, API contracts, and backlog as proposals, not
@@ -62,7 +69,7 @@ recorded above; other screens still need their collaborator design discussion.
 Current local verification:
 
 - Clean dependency installation with `npm ci`.
-- `npm run check`: lint, formatting, TypeScript, 251 Vitest unit tests,
+- `npm run check`: lint, formatting, TypeScript, 328 Vitest unit tests,
   9 contract checks, 16 runtime/configuration checks, 12 voice-input checks,
   7 Tavus contract checks, 9 encrypted-environment checks, and 52 isolated
   database checks. These require no
@@ -70,9 +77,11 @@ Current local verification:
 - `npm run build`: production build.
 - `npm audit`: zero reported vulnerabilities after updating the lint toolchain's
   transitive `minimatch` dependency through a pinned override.
-- Browser checks: 10 pass for health, landing-to-app navigation for new visitors
-  on desktop and phone, returning sessions, and mocked guardrail/phone flows; 4 unfinished milestone flows remain
-  skipped. Fast evals: 13 suites pass.
+- Browser checks: 23 pass for landing/app navigation, guardrails, long-content
+  scrolling on desktop/tablet/phone/short windows, reader position, local-calendar
+  memory edits, network retry, and unavailable memory/suggestion lists. Four
+  unfinished milestone flows remain skipped. Fast evals: all 13 suites pass,
+  including the expanded memory-capture dataset.
 - Hosted activation: 32 checks pass for anonymous identity, secure cookies,
   one real Claude reply, approval-first memory, maximum-length Unicode storage,
   reload/decryption, history, cross-user 404s, and deletion. Both disposable Auth

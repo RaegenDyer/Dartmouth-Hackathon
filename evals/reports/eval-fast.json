@@ -1718,19 +1718,109 @@
         },
         {
           "id": "cap-051",
-          "input": "My apartment still has boxes everywhere.",
+          "input": "Honestly, I really enjoy bouldering on weekends.",
           "pass": true,
-          "actual": "(not saved)"
+          "actual": "You really enjoy bouldering on weekends."
         },
         {
           "id": "cap-052",
-          "input": "I'm exhausted today.",
+          "input": "Well, honestly, I'm currently studying computer science.",
+          "pass": true,
+          "actual": "You're currently studying computer science."
+        },
+        {
+          "id": "cap-053",
+          "input": "I've recently moved to Hanover.",
+          "pass": true,
+          "actual": "You've recently moved to Hanover."
+        },
+        {
+          "id": "cap-054",
+          "input": "I feel overwhelmed, and I work at Dartmouth.",
+          "pass": true,
+          "actual": "You work at Dartmouth."
+        },
+        {
+          "id": "cap-055",
+          "input": "I enjoy hiking and I'm feeling lonely.",
+          "pass": true,
+          "actual": "You enjoy hiking."
+        },
+        {
+          "id": "cap-056",
+          "input": "I have asthma and I play guitar.",
+          "pass": true,
+          "actual": "You play guitar."
+        },
+        {
+          "id": "cap-057",
+          "input": "I live in Hanover and I play guitar and I enjoy bouldering.",
+          "pass": true,
+          "actual": "You live in Hanover. | You play guitar."
+        },
+        {
+          "id": "cap-058",
+          "input": "My friend said \"I enjoy hiking and I play guitar.\"",
           "pass": true,
           "actual": "(not saved)"
         },
         {
-          "id": "cap-053",
-          "input": "My roommate is cooking tonight.",
+          "id": "cap-059",
+          "input": "\"I like hiking and I play guitar.\"",
+          "pass": true,
+          "actual": "(not saved)"
+        },
+        {
+          "id": "cap-060",
+          "input": "If I moved to Hanover and I joined the running club, would I fit in?",
+          "pass": true,
+          "actual": "(not saved)"
+        },
+        {
+          "id": "cap-061",
+          "input": "I have never said I enjoy hiking and I play guitar.",
+          "pass": true,
+          "actual": "(not saved)"
+        },
+        {
+          "id": "cap-062",
+          "input": "I enjoy hiking. Please don't remember this.",
+          "pass": true,
+          "actual": "(not saved)"
+        },
+        {
+          "id": "cap-063",
+          "input": "I live in Hanover. Keep this out of your memories.",
+          "pass": true,
+          "actual": "(not saved)"
+        },
+        {
+          "id": "cap-064",
+          "input": "Off the record, I like chess.",
+          "pass": true,
+          "actual": "(not saved)"
+        },
+        {
+          "id": "cap-065",
+          "input": "I really feel so lonely.",
+          "pass": true,
+          "actual": "(not saved)"
+        },
+        {
+          "id": "cap-066",
+          "input": "I live in 上海.",
+          "pass": true,
+          "actual": "You live in 上海."
+        },
+        {
+          "id": "cap-067",
+          "input": "My friend said \"I enjoy hiking. I play guitar.\"",
+          "pass": true,
+          "actual": "(not saved)"
+        },
+        {
+          "id": "cap-068",
+          "input": "My friend said 'I enjoy hiking. I play guitar.'",
           "pass": true,
           "actual": "(not saved)"
         }
