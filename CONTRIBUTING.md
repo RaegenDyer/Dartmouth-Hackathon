@@ -62,10 +62,9 @@ Only these values are application settings:
 | `ANTHROPIC_API_KEY` | Server only |
 | `ANTHROPIC_MODEL` | Server only; a model ID available to the configured workspace |
 | `VOICE_INPUT_ENABLED` | Optional server flag; defaults to `false`; configuration only |
-| `VAPI_PRIVATE_KEY` | Server only; optional while voice is disabled |
-| `VAPI_ASSISTANT_ID` | Server only; optional while voice is disabled |
+| `DEEPGRAM_API_KEY` | Server only; optional while voice is disabled |
 
-The [Vapi voice-input preparation](docs/voice.md) adds no live calls or microphone
+The [Deepgram voice-input preparation](docs/voice.md) adds no live capture or microphone
 UI. Leave it disabled for text work. Its private configuration must not be sent
 to a browser, and enabling the flag alone does not implement the voice feature.
 

@@ -14,14 +14,18 @@ nonclinical and should encourage human relationships and independence.
 Two initial conversation scenarios are `check_in` and `social_step`. Additional
 scenarios, a product name, visuals, and model choice remain team decisions.
 Optional dictation later turns speech into editable text before the user sends
-it. Spoken responses, phone calls, avatars, live event scraping, and autonomous
-messages to other people are outside the initial scope.
+it. Phone calls, live event scraping, and autonomous messages to other people
+are outside the initial scope. An optional cute, whimsical animal/creature
+mascot is under consideration; spoken replies are a separate optional decision.
 
-Vapi is selected for optional dictation. The disabled provider/session ports,
+Deepgram is selected for optional dictation; Vapi was dropped on October 31.
+The disabled provider/session ports,
 transcript adapter, draft buffer, and server configuration are prepared; actual
 capture and session transport are not implemented. The [voice architecture](voice.md)
 keeps user-reviewed transcription separate from the app's Anthropic conversation
-flow. Vapi's own pipeline/output/cost behavior must be verified before activation.
+flow. The mascot is an app-rendered presentation layer with generated artwork;
+Tavus is not required for this non-human character direction. Its design waits
+on the collaborator-led image-generation workflow.
 
 ## System shape
 

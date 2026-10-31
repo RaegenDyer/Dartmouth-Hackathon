@@ -32,7 +32,8 @@ choose and code its own style. No direction has been selected yet.
 | GitHub | Public repository on `main`; access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
 | Companion core (milestone 1, step 1) | Server-side modules in `src/lib/companion`: `respond()` conversation service, safety pre/post checks and crisis view, memory store and fact-only capture, code-enforced memory disclosure, weekly social-action scheduler, boundary rules (AI status, only-connection, dependence, prompt reveal), rate limiter, encrypted emergency contact, account-data deletion. Mocked and Anthropic LLM adapters. In-memory repositories. Vitest unit tests and a deterministic eval suite (`evals/`). See the [milestone report](docs/milestone-1-report.md). | Supabase-backed repositories, auth, route handlers, chat UI, and memory panel. The `eval-llm` run has not been executed yet. |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, validated runtime/build configuration, and provider factories; contract and configuration regression checks. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
-| Optional voice input | [Vapi architecture](docs/voice.md), session/provider interfaces, user-transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default. | Assistant/account setup, verified-user session bootstrap, actual SDK transport, no-spoken-reply/cost validation, and browser/device checks; no microphone or calls run yet |
+| Optional voice input | [Deepgram architecture](docs/voice.md), session/provider interfaces, mono-microphone transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default; Vapi retired. | Verified-user session bootstrap, actual audio transport, microphone controls, and browser/device checks; no live capture or provider connection yet |
+| Optional mascot | Direction recorded October 31: cute, whimsical animal/creature with app-rendered generated artwork; Tavus is not required. | Collaborator design discussion, image-generated character options, selection, and animation; no mascot assets or UI implemented |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
 
 The model client factory does not implement chat. Auth verifies and signs out
@@ -51,8 +52,9 @@ and the pending collaborator style decision remain as documented above.
 Current local verification:
 
 - Clean dependency installation with `npm ci`.
-- `npm run check`: lint, TypeScript, 9 contract checks, 13 runtime/configuration
-  checks, 9 voice-input checks, and 37 isolated database checks. These require no
+- `npm run check`: lint, formatting, TypeScript, 150 Vitest unit tests,
+  9 contract checks, 13 runtime/configuration
+  checks, 11 voice-input checks, and 37 isolated database checks. These require no
   service credentials or paid provider calls.
 - `npm run build`: production build.
 - `npm audit`: zero reported vulnerabilities after updating the lint toolchain's
@@ -117,9 +119,12 @@ The current idea is a nonclinical companion for adults settling into a new city
 or program, helping them build human connections. **Designed to be uninstalled**
 is a working principle. The name, visual direction, and detailed features are
 not finalized. Text input and text output are the working scope; optional
-speech-to-text input can be added later. Voice responses are not currently planned.
-Vapi is selected for that optional input path; its disabled architecture and
-transcript handling are prepared without a live provider connection.
+speech-to-text input can be added later. On October 31, the owner dropped Vapi
+and chose a cute, whimsical animal/creature direction for an optional mascot.
+Deepgram is the selected speech-input provider; its disabled architecture and
+transcript handling are prepared without a live connection. Spoken replies are
+a separate optional decision. The actual mascot design remains to be discussed
+and image-generated with the collaborator doing that work.
 
 ## Start locally
 

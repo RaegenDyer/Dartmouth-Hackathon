@@ -7,6 +7,12 @@ and visual direction remain open. No concept board is an approved specification.
 
 **Checkpoint status: PENDING. No visual direction is approved.**
 
+October 31 preference: the optional mascot should be a cute, whimsical animal or
+creature rather than a realistic human. This guides future image-generated
+character options; the actual mascot, animation, and app style still await the
+collaborator discussion and selection below. Use app-rendered artwork for this
+direction; Tavus is not required.
+
 When frontend work is about to begin, the agent must bring up the style
 discussion with the collaborator requesting or leading that work. **Any project
 collaborator can make the design decision; approval from the original project

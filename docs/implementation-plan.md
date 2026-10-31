@@ -11,7 +11,7 @@ text flow before adding dictation or additional conversation scenarios.
 - Application configuration example separate from management credentials.
 - Draft SQL/data model and documented ownership/memory invariants.
 - Contributor instructions and credential-free CI checks.
-- Optional Vapi input interfaces, transcript normalization/editable buffer, and
+- Optional Deepgram input interfaces, transcript normalization/editable buffer, and
   disabled server configuration; live audio/session transport is not implemented.
 
 ## Build order and acceptance criteria
@@ -53,10 +53,12 @@ hackathon prototype can already claim.
 
 ## Later additions
 
-Optional Vapi microphone input should produce editable text and require a Send
+Optional Deepgram microphone input should produce editable text and require a Send
 action. The [voice-input foundation](voice.md) is prepared; implement the actual
-SDK transport only after selecting supported browsers, verifying no spoken
-replies and cost behavior, and handling microphone consent and audio retention.
+audio transport only after selecting supported browsers and handling microphone
+consent, session limits, and audio retention. A cute, whimsical animal/creature
+mascot can be rendered in the app with image-generated assets after the style
+discussion; Tavus is not required. Spoken output is a separate optional decision.
 Voice output, autonomous
 outreach, live web search, a separate agent framework, and a vector database are
 not prerequisites for this demo.

@@ -14,8 +14,7 @@ const settingNames = [
   "ANTHROPIC_BASE_URL",
   "ANTHROPIC_LOG",
   "VOICE_INPUT_ENABLED",
-  "VAPI_PRIVATE_KEY",
-  "VAPI_ASSISTANT_ID",
+  "DEEPGRAM_API_KEY",
 ];
 let originalSettings;
 
@@ -176,24 +175,22 @@ test("Anthropic factory keeps endpoint, logging, retries, and timeout bounded", 
   assert.equal(model, "test-only-model");
 });
 
-test("optional voice configuration is disabled without Vapi credentials", () => {
+test("optional voice configuration is disabled without Deepgram credentials", () => {
   assert.deepEqual(getVoiceInputConfiguration(), {
-    enabled: false, provider: "vapi", mode: "dictation",
+    enabled: false, provider: "deepgram", mode: "dictation",
   });
   process.env.VOICE_INPUT_ENABLED = "false";
-  process.env.VAPI_PRIVATE_KEY = "unused-invalid key";
+  process.env.DEEPGRAM_API_KEY = "unused-invalid key";
   assert.equal(getVoiceInputConfiguration().enabled, false);
 });
 
-test("enabled voice configuration requires explicit server-only Vapi settings", () => {
+test("enabled voice configuration requires an explicit server-only Deepgram key", () => {
   process.env.VOICE_INPUT_ENABLED = "true";
-  assert.throws(getVoiceInputConfiguration, /VAPI_PRIVATE_KEY.*VAPI_ASSISTANT_ID/);
-  process.env.VAPI_PRIVATE_KEY = " test-only-private-key ";
-  process.env.VAPI_ASSISTANT_ID = "11111111-1111-4111-8111-111111111111";
+  assert.throws(getVoiceInputConfiguration, /DEEPGRAM_API_KEY/);
+  process.env.DEEPGRAM_API_KEY = " test-only-api-key ";
   assert.deepEqual(getVoiceInputConfiguration(), {
-    enabled: true, provider: "vapi", mode: "dictation",
-    privateKey: "test-only-private-key",
-    assistantId: "11111111-1111-4111-8111-111111111111",
+    enabled: true, provider: "deepgram", mode: "dictation",
+    apiKey: "test-only-api-key",
   });
 });
 
@@ -201,11 +198,10 @@ test("voice configuration rejects invalid flags and reports no secret values", (
   process.env.VOICE_INPUT_ENABLED = "yes";
   assert.throws(getVoiceInputConfiguration, /voice settings: VOICE_INPUT_ENABLED$/);
   process.env.VOICE_INPUT_ENABLED = "true";
-  process.env.VAPI_PRIVATE_KEY = "DO_NOT_INCLUDE THIS_VALUE";
-  process.env.VAPI_ASSISTANT_ID = "not-a-uuid";
+  process.env.DEEPGRAM_API_KEY = "DO_NOT_INCLUDE THIS_VALUE";
   assert.throws(getVoiceInputConfiguration, (error) => {
     assert.equal(error.message,
-      "Missing or invalid voice settings: VAPI_PRIVATE_KEY, VAPI_ASSISTANT_ID");
+      "Missing or invalid voice settings: DEEPGRAM_API_KEY");
     return true;
   });
 });

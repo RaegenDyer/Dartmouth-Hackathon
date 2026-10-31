@@ -84,11 +84,11 @@ preview builds; use designated development settings when previews need services.
 | `ANTHROPIC_API_KEY` | Server-only app key, stored as a sensitive environment variable |
 | `ANTHROPIC_MODEL` | Model ID available to the configured Anthropic workspace |
 | `VOICE_INPUT_ENABLED` | Optional server flag; leave `false` while live voice is unimplemented |
-| `VAPI_PRIVATE_KEY` | Optional server-only Vapi key; never a public variable |
-| `VAPI_ASSISTANT_ID` | Optional server-only approved assistant UUID |
+| `DEEPGRAM_API_KEY` | Optional server-only Deepgram key; never a public variable |
 
 The [voice-input architecture](voice.md) remains disabled and makes no calls.
-The first foundation deployment needs no Vapi values. Enabling configuration
+The first foundation deployment needs no Deepgram values. Vapi is no longer used.
+Enabling configuration
 alone does not implement voice; use the documented activation work first.
 
 Configure the two public Supabase values together. Partial or privileged public

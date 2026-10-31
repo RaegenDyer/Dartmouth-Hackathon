@@ -33,11 +33,15 @@
   contact with other people, or hidden memory persistence.
 - For account and console setup, prefer focused step-by-step guidance. Use
   existing authorized access when the user asks you to carry out the action.
-- Vapi is selected for optional voice input. Read docs/voice.md before voice
-  work. Keep it disabled by default; the current code is preparation, not a live
-  Vapi transport. Preserve editable dictation and explicit Send. Spoken replies
-  and outbound calls remain outside scope; verify Vapi output/cost behavior
-  before activating calls. Private Vapi credentials stay server-only.
+- Deepgram is selected for optional speech input; Vapi was dropped on October 31.
+  Read docs/voice.md before voice work. Keep voice disabled by default; transport
+  is not implemented. Preserve editable dictation and explicit Send. Keep the
+  permanent Deepgram key server-only. Spoken output is a separate optional
+  decision; outbound calls remain outside scope.
+- The optional mascot direction is a cute, whimsical animal or creature, rendered
+  in the app with generated raster artwork/animation. Tavus is not required for
+  this direction. Discuss and image-generate the actual mascot design with the
+  collaborating person before implementation; the style checkpoint stays pending.
 - For app visual design, use the image-generation workflow for app mockups as
   well as original raster icons and illustrative assets. The user prefers
   generated raster assets over SVG/vector icon packs, icon fonts, emoji, or
