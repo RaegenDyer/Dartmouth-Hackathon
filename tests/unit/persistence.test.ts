@@ -81,4 +81,32 @@ describe("model memory suggestions", () => {
     expect((await app.respond(session.id, "Any hiking ideas?")).memories_used).toEqual([memory.id]);
     expect((await app.deps.sessions.get(session.id))?.memoriesReferenced).toEqual([memory.id]);
   });
+
+  it("offers up to three suggestions per message and skips passing states", async () => {
+    const llm: LlmAdapter = {
+      generate: async () => ({
+        text: "Sounds like a full week.",
+        memoriesUsed: [],
+        memorySuggestions: ["You work at the hospital.", "You love bouldering.", "You're learning Spanish."],
+      }),
+    };
+    const app = createInMemoryCompanion({ llm });
+    const session = await app.deps.sessions.create("u1", new Date());
+    const result = await app.respond(
+      session.id,
+      "Quick update: I work at the hospital here, I love bouldering, and I'm learning Spanish.",
+    );
+    expect(result.memory_proposals.map((proposal) => proposal.text)).toEqual([
+      "You work at the hospital.",
+      "You love bouldering.",
+      "You're learning Spanish.",
+    ]);
+    expect(
+      acceptableModelSuggestion(
+        "Your apartment still has boxes everywhere.",
+        "My apartment still has boxes everywhere",
+      ),
+    ).toBe(false);
+    expect(acceptableModelSuggestion("You're tired today.", "I'm tired today")).toBe(false);
+  });
 });

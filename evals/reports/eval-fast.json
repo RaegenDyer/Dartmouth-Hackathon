@@ -1715,6 +1715,24 @@
           "input": "I just started a pottery class.",
           "pass": true,
           "actual": "You just started a pottery class."
+        },
+        {
+          "id": "cap-051",
+          "input": "My apartment still has boxes everywhere.",
+          "pass": true,
+          "actual": "(not saved)"
+        },
+        {
+          "id": "cap-052",
+          "input": "I'm exhausted today.",
+          "pass": true,
+          "actual": "(not saved)"
+        },
+        {
+          "id": "cap-053",
+          "input": "My roommate is cooking tonight.",
+          "pass": true,
+          "actual": "(not saved)"
         }
       ]
     },

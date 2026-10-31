@@ -248,5 +248,20 @@
     "id": "cap-050",
     "text": "I just started a pottery class.",
     "shouldCapture": true
+  },
+  {
+    "id": "cap-051",
+    "text": "My apartment still has boxes everywhere.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-052",
+    "text": "I'm exhausted today.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-053",
+    "text": "My roommate is cooking tonight.",
+    "shouldCapture": false
   }
 ]

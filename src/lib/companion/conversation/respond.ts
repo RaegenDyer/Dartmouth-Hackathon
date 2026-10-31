@@ -88,6 +88,9 @@ export class ConversationError extends Error {
   }
 }
 
+/** Memory suggestions offered per message (pattern-based and model-suggested combined). */
+export const MAX_SUGGESTIONS_PER_TURN = 3;
+
 const HIDDEN_CRISIS_MESSAGE = "[Message hidden: safety resources were shown]";
 
 // DB-3. No question, so it never conflicts with IS-1/IS-2.
@@ -374,7 +377,7 @@ export function createConversationService(deps: ConversationDeps) {
         (existing) => replyReferencesMemory(existing, candidate) || replyReferencesMemory(candidate, existing),
       );
     for (const candidate of candidates) {
-      if (proposed.length >= 2) break;
+      if (proposed.length >= MAX_SUGGESTIONS_PER_TURN) break;
       if (known.has(candidate.toLowerCase()) || overlaps(candidate)) continue;
       known.add(candidate.toLowerCase());
       try {

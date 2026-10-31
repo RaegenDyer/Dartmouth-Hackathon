@@ -73,6 +73,14 @@ function splitSentences(text: string): string[] {
     .filter(Boolean);
 }
 
+/** Passing states are not lasting facts ("boxes everywhere", "tired today"). */
+const TRANSIENT =
+  /\b(?:right now|at the moment|today|tonight|yesterday|this (?:morning|afternoon|evening|week|weekend)|still (?:has|have|had)|everywhere|so far)\b/;
+
+export function isLastingFact(text: string): boolean {
+  return !TRANSIENT.test(normalizeForMatching(text));
+}
+
 /**
  * MP-1 / MP-2: the content check applied to every memory, including text the
  * user edits before saving. Memory text is data, so instruction-like text is
@@ -90,7 +98,7 @@ export function isAllowedMemoryText(text: string): boolean {
 export function acceptableModelSuggestion(suggestion: string, userMessage: string): boolean {
   const text = suggestion.replace(/\s+/g, " ").trim();
   if (!text || text.length > LIMITS.maxMemoryLength || !/^(?:you|your|you're|you've)\b/i.test(text)) return false;
-  if (!isAllowedMemoryText(text) || checkUserMessage(userMessage).triggered) return false;
+  if (!isAllowedMemoryText(text) || !isLastingFact(text) || checkUserMessage(userMessage).triggered) return false;
   const said = new Set(normalizeForMatching(userMessage).match(/[a-z0-9']{3,}/g) ?? []);
   const grounded = (normalizeForMatching(text).match(/[a-z0-9']{4,}/g) ?? []).filter(
     (word) => !["your", "you're", "you've"].includes(word),
@@ -102,6 +110,7 @@ export function isRememberableFact(sentence: string): boolean {
   const normalized = normalizeForMatching(sentence).replace(FILLER, "");
   if (normalized.endsWith("?") || normalized.length < 8) return false;
   if (EXCLUDED_PATTERNS.some((pattern) => pattern.test(normalized))) return false;
+  if (!isLastingFact(normalized)) return false;
   return FACT_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
