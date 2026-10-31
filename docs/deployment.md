@@ -7,6 +7,11 @@ The owner authorized the GitHub integration. Hosting was verified live at
 https://candid-dartmouth.vercel.app on October 31, 2026, application commit
 `a571b39969b5ad469086e95d3636350829142a92` (Vercel Ready, page/health HTTP 200).
 The unconfigured session route returns a safe 503 as expected.
+Configured activation was verified on the same public URL at application commit
+`7fbd98070b565eef341737f9335549f730bfc830`, deployment
+`dpl_2CpyUsAdcmYxzKy4HeZ4hyGX8Aw1` (Ready). Anonymous sign-in, one real Claude
+reply, memory approval/reload, history, ownership isolation, and cleanup passed
+all 32 hosted checks. Production uses `claude-sonnet-5-5` and Supabase storage.
 Chat, anonymous auth, and encrypted Supabase persistence now exist in the app.
 With blank app settings the first deployment shows setup instructions and health;
 configured chat requires the established encryption key and runtime settings below.
@@ -75,18 +80,24 @@ Passing these checks verifies hosting and liveness, not a working AI product or
 live provider/database connectivity. No custom domain or additional service is
 needed for this first deployment.
 
-## Enable configured chat after hosting verification
+## Reproduce the configured app deployment
+
+Production is configured and verified. These steps describe the settings needed
+for another environment or future redeployment; retain the existing data key.
 
 1. Recover the **existing** `CONTACT_ENCRYPTION_KEY` from the collaborator's
    configured environment and save it in ignored `.env.local`. Do not send its
    value in chat or generate a replacement for the shared database: stored text
    is encrypted under that key, and a different key cannot read it.
-2. Apply the reviewed additive migration
-   `supabase/migrations/202610310002_ciphertext_capacity.sql` using the team's
-   database workflow. The earlier two migrations were recorded as applied by
-   Neeraj; this new Unicode-capacity migration has not been applied by this pass.
-3. Add the runtime settings below and redeploy. Use `LLM_ADAPTER=mock` until a
-   model and shared usage limits are chosen; optional voice flags stay false.
+2. Verify the schema includes the reviewed migrations. Activation confirmed the
+   two memory/proposal ciphertext checks already allow 2,048 characters, as in
+   `supabase/migrations/202610310002_ciphertext_capacity.sql`; no duplicate DDL
+   was run. Apply all three migrations to new databases and reconcile CLI history
+   with the actual schema for existing projects.
+3. Add runtime settings and redeploy. Current production uses
+   `LLM_ADAPTER=anthropic`, `ANTHROPIC_MODEL=claude-sonnet-5-5`, and
+   `COMPANION_STORAGE=supabase`. Optional voice flags remain false. Mock mode
+   remains available for offline development and test fixtures.
 
 In Project Settings -> Environment Variables, add the values for the intended
 Production and/or Preview environment, then redeploy. GitHub Actions secrets are
@@ -101,8 +112,8 @@ stay out of Vercel source uploads.
 | `NEXT_PUBLIC_SUPABASE_URL` | Browser-safe HTTP(S) project endpoint |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe `sb_publishable_` key; legacy `anon` JWT supported |
 | `ANTHROPIC_API_KEY` | Server-only app key, stored as a sensitive environment variable |
-| `ANTHROPIC_MODEL` | Model ID available to the configured Anthropic workspace |
-| `LLM_ADAPTER` | `mock` initially; `anthropic` enables funded model requests |
+| `ANTHROPIC_MODEL` | Production: `claude-sonnet-5-5`, verified available and exercised by the hosted check |
+| `LLM_ADAPTER` | Production: `anthropic`; offline test fixtures use `mock` |
 | `CONTACT_ENCRYPTION_KEY` | Required for production companion requests, including mock mode; established 32-byte base64 data key |
 | `COMPANION_STORAGE` | `supabase` for persistent deployment; process memory is for tests |
 | `VOICE_INPUT_ENABLED` | Optional server flag; leave `false` while live voice is unimplemented |
@@ -137,6 +148,11 @@ The first Vercel attempt exposed a route-test fixture that relied on a
 nonproduction environment. The fixture now supplies and restores its own random
 test encryption key, so `npm run check` works with `NODE_ENV=production` without
 any runtime secrets. This does not configure or weaken the deployed data key.
+The configured build exposed a second test-isolation issue: Next.js's dotenv
+loader inherited a production data key while verifying a dummy fixture with a
+blank key. The roundtrip test now clears all fixture-owned variables from its
+child environment and deliberately injects a dummy ambient key as regression
+coverage. Full checks/build pass with the configured production environment.
 
 1. Open the failed deployment's build logs and identify the first failing step.
    Check Node 22, the repository root, and the exact environment-variable names.

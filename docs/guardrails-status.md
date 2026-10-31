@@ -90,7 +90,7 @@ two-option redirect (DB-2) and three unrouted extraction phrasings (MB-1).
 
 | ID | Status | Where | Notes |
 |---|---|---|---|
-| DP-1 | Done (pending migration apply) | `crypto/seal.ts`, `supabase-store.ts`, `resolveDataKey` | Message text, titles, memories, suggestions, weekly suggestions, and the emergency contact are AES-256-GCM encrypted by the app (bound to the owner ID) before reaching Supabase. The key (`CONTACT_ENCRYPTION_KEY`) is held outside the database; production refuses to run without it. Losing the key makes stored text unreadable. |
+| DP-1 | Done (hosted verified Oct 31) | `crypto/seal.ts`, `supabase-store.ts`, `resolveDataKey` | Message text, titles, memories, suggestions, weekly suggestions, and the emergency contact are AES-256-GCM encrypted by the app (bound to the owner ID) before reaching Supabase. The production key is a sensitive Vercel variable and decrypted three sampled existing records. Hosted Unicode memory approval/reload passed. Production refuses to run without a key; losing it makes stored text unreadable. |
 | DP-2 | Done | `respond.ts`, tests | |
 | DP-3 | Done | `log.ts` `scrubLogEvent` | Allowlisted keys only; emails, phone numbers, tokens, and free text redacted. |
 | DP-4 | Done (decided) | `runRetention`, `conversations.kept` | Decision 2026-10-31 (Neeraj Kumar): conversations are saved by default and kept until the user deletes them, per conversation or all at once. `MESSAGE_RETENTION_DAYS` can add automatic deletion for threads not kept. |

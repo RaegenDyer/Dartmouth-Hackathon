@@ -4,13 +4,20 @@ The migrations `migrations/202610300001_initial_schema.sql` and `migrations/2026
 
 Read [the data model](../docs/data-model.md) before changing the schema. Keep database changes in migrations so contributors work from the same definition.
 
-The additive `202610310002_ciphertext_capacity.sql` migration is **pending hosted
-application**. It expands only memory/proposal ciphertext capacity from 1,000 to
+The hosted constraints from `202610310002_ciphertext_capacity.sql` were **verified
+on 2026-10-31**. They already matched the migration, so activation ran no duplicate
+DDL. The migration expands memory/proposal ciphertext capacity from 1,000 to
 2,048 stored characters so valid 280-unit Unicode memories survive AES-GCM/Base64
-expansion. The application plaintext limit stays 280. Apply this migration through
-the team's normal database workflow before enabling configured chat on Vercel.
+expansion. The application plaintext limit stays 280. New databases should apply
+all three migrations; reconcile CLI migration history with the verified schema.
 The local harness applies all three migrations and passes 52 isolated checks,
 including actual encrypted Unicode storage round trips.
+
+Configured hosted activation passed 32 checks, including edited Unicode memory
+approval/reload, conversation history, and cross-user 404s. The saved data key
+successfully decrypted three sampled existing records. Two disposable anonymous
+test users were removed after app cleanup, with zero remaining Auth or app rows
+for those identities. No existing user data was changed by that cleanup.
 
 ## Isolated schema checks
 
