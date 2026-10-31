@@ -15,12 +15,12 @@ feature sketches, database draft, API contracts, and backlog as proposals, not
 approved requirements. Do not implement an entire proposed feature list merely
 because it appears in the documentation.
 
-**Frontend style checkpoint: DECIDED for the chat screen.** On October 31, 2026,
-Neeraj Kumar selected generated concept [01 / Warm editorial](docs/design/concepts/01-warm-editorial.png)
-for the chat-screen scope. The [design decision record](docs/design/README.md#collaborator-design-decision-record)
-lists exactly what is in scope. Other screens still require the collaborator
-style discussion, image-generated mockups informed by the
-[100 design masters](docs/design/design-masters.md), and a recorded decision.
+**Frontend style checkpoint: DECIDED for the chat app.** On October 31, 2026,
+Neeraj Kumar approved the "Candid minimal" direction (off-white, Geist, hairline
+grid, one orange accent; inspired by skillsync.com) from an HTML preview, replacing
+01 / Warm editorial. See the [design decision record](docs/design/README.md#current-decision-candid-minimal-supersedes-01-for-the-app)
+for scope. Other screens, illustrations, and the mascot still need the
+collaborator design discussion and image-generated artwork.
 
 | Area | Actual progress | Still needed |
 | --- | --- | --- |

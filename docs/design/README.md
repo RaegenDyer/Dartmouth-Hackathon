@@ -42,6 +42,20 @@ or the collaborator requests it. Implement the selected design with accessible
 HTML/CSS and real controls; image generation supplies the visual design and
 raster artwork.
 
+### Current decision: Candid minimal (supersedes 01 for the app)
+
+| Field | Current value |
+| --- | --- |
+| Status | Decided (scoped) |
+| Deciding collaborator | Neeraj Kumar |
+| Reference | The design language of [skillsync.com](https://skillsync.com/), used as inspiration only: no logo, copy, illustrations, or page structure copied |
+| Selected concept | HTML preview "Candid Design Preview" (private artifact, 2026-10-31): off-white page, near-black ink, one orange accent; Geist and Geist Mono; large lowercase headlines with a gray second line; small uppercase mono labels; centered frame with hairline rules; flat cards with thin borders; matching dark theme |
+| Image generation | Not used: no image-generation tool was available in the session. The collaborator approved the HTML preview instead. Product illustrations and the deferred mascot still need image-generated raster artwork before they appear |
+| Approved scope | Chat app: welcome and age check, under-18 and setup notices, kill-switch notice, chat screen, conversation sidebar, and memory panel. A public landing page is proposed in the same preview and awaits a separate go-ahead |
+| Decision date | 2026-10-31 |
+
+The 01 / Warm editorial record below is kept for history; it no longer applies to the app.
+
 ### Collaborator design decision record
 
 | Field | Current value |

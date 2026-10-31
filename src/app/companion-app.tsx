@@ -56,21 +56,32 @@ async function readError(response: Response): Promise<ApiErrorBody> {
 }
 
 function greeting(hour: number) {
-  if (hour < 12) return "Good morning.";
-  if (hour < 18) return "Good afternoon.";
-  return "Good evening.";
+  if (hour < 12) return "good morning.";
+  if (hour < 18) return "good afternoon.";
+  return "good evening.";
 }
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
+const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" });
+
+function Wordmark() {
+  return (
+    <p className="brand">
+      candid<span aria-hidden="true">.</span>
+    </p>
+  );
+}
 
 /** OP-1: static notice shown when chat is switched off. */
 function ChatDisabledNotice() {
   return (
     <main className="welcome">
-      <p className="brand">Candid</p>
-      <h1>Chat is turned off right now.</h1>
+      <Wordmark />
+      <h1>
+        Chat is turned off right now.<span className="subline">please reach a person instead.</span>
+      </h1>
       <div className="notice crisis-notice" role="alert">
-        <h2>If you need help now</h2>
+        <h2 className="label">If you need help now</h2>
         <ul>
           <li>
             <strong>988 Suicide and Crisis Lifeline (US):</strong> call or text 988
@@ -89,7 +100,7 @@ function ChatDisabledNotice() {
 
 export function CompanionApp() {
   const [status, setStatus] = useState<Status>("loading");
-  const [hello, setHello] = useState("Hello.");
+  const [hello, setHello] = useState("hello.");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -364,12 +375,18 @@ export function CompanionApp() {
   if (status !== "ready") {
     return (
       <main className="welcome">
-        <p className="brand">Candid</p>
-        <h1>{hello} How was today?</h1>
+        <Wordmark />
+        <span className="eyebrow label">
+          proof of concept · <b>for adults 18+</b>
+        </span>
+        <h1>
+          {hello}
+          <span className="subline">how was today?</span>
+        </h1>
         {status === "loading" && <p aria-live="polite">Loading…</p>}
         {status === "unconfigured" && (
           <div className="notice" role="status">
-            <h2>Sign-in isn&apos;t set up on this computer yet</h2>
+            <h2>sign-in isn&apos;t set up on this computer yet</h2>
             <p>
               Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code> to{" "}
               <code>.env.local</code>, then restart the app.
@@ -379,18 +396,18 @@ export function CompanionApp() {
         {status === "age-gate" && (
           <>
             <p className="lede">
-              Candid is an AI companion for settling into a new place. You choose what it remembers, and it will not contact
-              anyone for you. This is a proof of concept.
+              Candid is an AI companion for settling into a new place. You choose what it remembers, and it will not
+              contact anyone for you. This is a proof of concept.
             </p>
             {/* AA-1: placeholder wording, pending team and legal review. */}
             <fieldset className="age-gate">
-              <legend>This proof of concept is for adults. Are you 18 or older?</legend>
+              <legend className="label">This proof of concept is for adults. Are you 18 or older?</legend>
               <div className="actions">
                 <button type="button" className="primary" onClick={() => void startSession()}>
-                  Yes, I&apos;m 18 or older
+                  yes, I&apos;m 18 or older
                 </button>
                 <button type="button" className="quiet" onClick={() => setStatus("under-18")}>
-                  No, I&apos;m under 18
+                  no, I&apos;m under 18
                 </button>
               </div>
             </fieldset>
@@ -402,7 +419,7 @@ export function CompanionApp() {
         )}
         {status === "under-18" && (
           <div className="notice" role="status">
-            <h2>Sorry, this proof of concept is only for adults</h2>
+            <h2>sorry, this proof of concept is only for adults</h2>
             <p>If you need someone to talk to right now, you can call or text 988 in the US.</p>
           </div>
         )}
@@ -418,12 +435,14 @@ export function CompanionApp() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <p className="brand">Candid</p>
-        <button type="button" className="quiet" onClick={newConversation}>
-          New conversation
+        <Wordmark />
+        <button type="button" className="primary" onClick={newConversation}>
+          new conversation
         </button>
         <nav className="history" aria-labelledby="history-title">
-          <h2 id="history-title">Your conversations</h2>
+          <h2 id="history-title" className="label">
+            Your conversations
+          </h2>
           <p className="fine-print" id="history-note">
             Conversations are saved so you can come back to them. You can delete any conversation, or all your data, at
             any time.
@@ -441,14 +460,14 @@ export function CompanionApp() {
                       <div className="confirm" role="group" aria-label={`Confirm deleting ${label}`}>
                         <p>Delete this conversation? This can&apos;t be undone.</p>
                         <button type="button" className="danger small" onClick={() => void deleteConversation(item.id)}>
-                          Delete
+                          delete
                         </button>
                         <button
                           type="button"
                           className="quiet small"
                           onClick={() => setConfirmDeleteConversation(null)}
                         >
-                          Cancel
+                          cancel
                         </button>
                       </div>
                     ) : (
@@ -468,7 +487,7 @@ export function CompanionApp() {
                           aria-label={`Delete conversation: ${label}`}
                           onClick={() => setConfirmDeleteConversation(item.id)}
                         >
-                          Delete
+                          delete
                         </button>
                       </>
                     )}
@@ -483,19 +502,19 @@ export function CompanionApp() {
             <div className="confirm" role="group" aria-label="Confirm data deletion">
               <p>Delete all your conversations, memories, and suggestions? This can&apos;t be undone.</p>
               <button type="button" className="danger small" onClick={() => void deleteMyData()}>
-                Delete everything
+                delete everything
               </button>
               <button type="button" className="quiet small" onClick={() => setConfirmDelete(false)}>
-                Cancel
+                cancel
               </button>
             </div>
           ) : (
-            <button type="button" className="quiet" onClick={() => setConfirmDelete(true)}>
-              Delete my data
+            <button type="button" className="link" onClick={() => setConfirmDelete(true)}>
+              delete my data
             </button>
           )}
-          <button type="button" className="quiet" onClick={() => void signOut()}>
-            Sign out
+          <button type="button" className="link" onClick={() => void signOut()}>
+            sign out
           </button>
         </div>
       </aside>
@@ -503,11 +522,15 @@ export function CompanionApp() {
       <main className="today">
         {/* CD-2 */}
         <p className="poc-notice" role="note">
-          Candid is a proof of concept: an AI companion, not a person or a clinical service. Replies can be wrong.
+          <span className="pill label">proof of concept</span>
+          Candid is an AI companion, not a person or a clinical service. Replies can be wrong.
         </p>
         <header className="today-header">
-          <h1>{hello}</h1>
-          <p>How was today?</p>
+          <span className="label">{dayFormat.format(new Date())}</span>
+          <h1>
+            {hello}
+            <span className="subline">how was today?</span>
+          </h1>
         </header>
 
         <div className="today-grid">
@@ -521,6 +544,11 @@ export function CompanionApp() {
               {messages.map((message) => (
                 <div key={message.id} className={`bubble ${message.role}${message.crisis ? " crisis" : ""}`}>
                   <span className="sr-only">{message.role === "user" ? "You said:" : "Candid said:"}</span>
+                  {message.role === "assistant" && (
+                    <span className="label who" aria-hidden="true">
+                      candid
+                    </span>
+                  )}
                   <MessageText text={message.text} />
                   {message.crisis && (
                     <div className="crisis-detail">
@@ -561,7 +589,7 @@ export function CompanionApp() {
               <div className="ended">
                 <p>This conversation has ended.</p>
                 <button type="button" className="primary" onClick={newConversation}>
-                  Start a new conversation
+                  start a new conversation
                 </button>
               </div>
             ) : (
@@ -573,16 +601,16 @@ export function CompanionApp() {
                   id="message"
                   rows={2}
                   maxLength={MAX_MESSAGE}
-                  placeholder="Write a message…"
+                  placeholder="write a message…"
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={onComposerKey}
                   aria-describedby="message-hint"
                 />
                 <button type="submit" className="primary" disabled={sending || !draft.trim()}>
-                  Send
+                  send
                 </button>
-                <p id="message-hint" className="hint">
+                <p id="message-hint" className="hint label">
                   Enter to send, Shift+Enter for a new line.
                   {draft.length > MAX_MESSAGE - 100 && ` ${MAX_MESSAGE - draft.length} characters left.`}
                 </p>
@@ -591,9 +619,11 @@ export function CompanionApp() {
           </section>
 
           <section className="card space" aria-labelledby="space-title">
-            <h2 id="space-title">Your space</h2>
+            <h2 id="space-title" className="label">
+              Your space
+            </h2>
 
-            <h3>Suggested to remember</h3>
+            <h3>suggested to remember</h3>
             {proposals.length === 0 ? (
               <p className="empty">
                 Nothing waiting. When you mention everyday facts, like where you live or what you enjoy, suggestions
@@ -603,6 +633,7 @@ export function CompanionApp() {
               <ul className="items">
                 {proposals.map((proposal) => (
                   <li key={proposal.id} className="proposal">
+                    <span className="label">suggested · from what you said</span>
                     <label htmlFor={`proposal-${proposal.id}`} className="sr-only">
                       Suggested memory, editable
                     </label>
@@ -625,10 +656,10 @@ export function CompanionApp() {
                     </label>
                     <div className="actions">
                       <button type="button" className="primary small" onClick={() => void saveProposal(proposal)}>
-                        Save
+                        save
                       </button>
                       <button type="button" className="quiet small" onClick={() => void dismissProposal(proposal)}>
-                        Dismiss
+                        dismiss
                       </button>
                     </div>
                   </li>
@@ -636,7 +667,7 @@ export function CompanionApp() {
               </ul>
             )}
 
-            <h3>What I remember</h3>
+            <h3>what I remember</h3>
             {memories.length === 0 ? (
               <p className="empty">Nothing saved yet.</p>
             ) : (
@@ -645,7 +676,7 @@ export function CompanionApp() {
                   <li key={memory.id} className="memory">
                     <div>
                       <span>{memory.text}</span>
-                      <span className="expiry">
+                      <span className="expiry label">
                         {memory.expiresAt
                           ? `Expires ${dateFormat.format(new Date(memory.expiresAt))}`
                           : "Kept until you delete it"}
@@ -659,7 +690,7 @@ export function CompanionApp() {
                           onClick={() => void keepMemory(memory)}
                           aria-label={`Keep memory: ${memory.text}`}
                         >
-                          Keep
+                          keep
                         </button>
                       )}
                       <button
@@ -668,7 +699,7 @@ export function CompanionApp() {
                         onClick={() => void deleteMemory(memory)}
                         aria-label={`Delete memory: ${memory.text}`}
                       >
-                        Delete
+                        delete
                       </button>
                     </div>
                   </li>
