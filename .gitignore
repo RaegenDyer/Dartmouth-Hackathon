@@ -1,6 +1,7 @@
 # Local credentials and environment files
 /credentials.env
 /credentials.*.env
+/.secrets/
 .env
 .env.*
 !.env.example

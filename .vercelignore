@@ -1,5 +1,7 @@
 # Management credentials and local application secrets must not be uploaded.
 credentials.env
 credentials.*.env
+.secrets/
+secrets/
 .env
 .env.*

@@ -76,6 +76,9 @@ In Project Settings -> Environment Variables, add the values for the intended
 Production and/or Preview environment, then redeploy. GitHub Actions secrets are
 not automatically copied to Vercel. Keep production credentials out of untrusted
 preview builds; use designated development settings when previews need services.
+Collaborator laptop setup uses a separate [encrypted development bundle](development-secrets.md),
+not an export of GitHub Actions Secrets. Its unlock file and decrypted values
+stay out of Vercel source uploads.
 
 | Variable | Purpose |
 | --- | --- |

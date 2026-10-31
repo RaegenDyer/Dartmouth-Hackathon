@@ -26,6 +26,12 @@
 - Keep provider and management secrets out of Git, logs, browser bundles, and
   shared documents. Inspect secret presence without printing values. Read local
   management credentials only when an authorized task actually needs them.
+- Collaborator application settings are distributed through the encrypted
+  secrets/development.env.gpg bundle. Read docs/development-secrets.md. The
+  separate .secrets/development-env.key unlock file and decrypted .env.local
+  stay ignored/private. Use npm run env:pull (or -- --merge for existing settings)
+  without printing values. Never export GitHub Actions Secrets through workflows
+  or add management tokens to the application bundle.
 - Database access in the app uses verified user identity and RLS. Management
   tokens are reserved for account/project administration and deployment tooling.
 - Preserve explicit user control over saved memories and social actions. Do not

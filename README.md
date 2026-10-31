@@ -55,7 +55,8 @@ Current local verification:
 - Clean dependency installation with `npm ci`.
 - `npm run check`: lint, formatting, TypeScript, 150 Vitest unit tests,
   9 contract checks, 16 runtime/configuration checks, 11 voice-input checks,
-  7 Tavus contract checks, and 37 isolated database checks. These require no
+  7 Tavus contract checks, 6 encrypted-environment checks, and 37 isolated
+  database checks. These require no
   service credentials or paid provider calls.
 - `npm run build`: production build.
 - `npm audit`: zero reported vulnerabilities after updating the lint toolchain's
@@ -199,8 +200,14 @@ vercel.json                  Vercel framework, installation, and checked build
 - `.env.example`: safe names and empty values; committed for contributors.
 - `credentials.env`: local **management** access; ignored by Git and Vercel uploads.
 - GitHub Actions Secrets: `ANTHROPIC_API_KEY`, `VERCEL_TOKEN`,
-  `SUPABASE_ACCESS_TOKEN`, and `SUPABASE_PROJECT_REF` have been uploaded and their
-  presence verified. GitHub does not return their saved values to local clones.
+  `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `DEEPGRAM_API_KEY`,
+  `TAVUS_API_KEY`, and `TAVUS_PAL_ID` have been uploaded and their presence verified.
+  GitHub does not return their saved values to local clones.
+- `secrets/development.env.gpg`: encrypted application-only development settings
+  for collaborators. Use [the local secrets guide](docs/development-secrets.md).
+  Its separate unlock file `.secrets/development-env.key` stays private/ignored;
+  management tokens are excluded. `npm run env:pull` decrypts locally, and
+  `npm run env:pull -- --merge` preserves nonblank existing settings.
 - Vercel environment settings: only application runtime settings, once deployed.
 
 `GITHUB_TOKEN`, `VERCEL_TOKEN`, and `SUPABASE_ACCESS_TOKEN` must not be imported by

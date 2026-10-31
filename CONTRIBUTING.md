@@ -48,10 +48,17 @@ tools during installation. The first foundation deployment needs no app keys.
 
 ## Working on live integrations
 
-Copy `.env.example` to `.env.local`. Get development application settings through
-the project owner using an approved private channel, or use your own development
-Anthropic key. A separate key in the funded workspace makes individual development
-access easier to revoke and attribute.
+For shared development settings, follow [the encrypted local setup guide](docs/development-secrets.md).
+Receive the unlock file privately from the project owner, save it under
+`.secrets/development-env.key`, and run `npm run env:pull` after cloning/pulling.
+Use `npm run env:pull -- --merge` to fill blank/missing values in an existing
+`.env.local`; nonblank local values are preserved. GitHub Actions Secrets cannot
+be downloaded to a laptop; this is a separate encrypted application-only bundle.
+
+You can also copy `.env.example` to `.env.local` and use your own development
+keys. A separate key in the funded workspace makes individual development access
+easier to revoke and attribute. Supabase public settings and the Anthropic model
+must be supplied when those integrations are enabled if still blank in the template.
 
 Only these values are application settings:
 
