@@ -31,8 +31,8 @@ are in `src/lib/contracts/index.ts`.
 | Method and path | Input / output | Status |
 | --- | --- | --- |
 | `GET /api/health` | `{status:"ok",service:"dartmouth-hackathon",stage:"foundation"}` | Implemented; public liveness only |
-| `GET /api/auth/session` | `{authenticated:false}` or `{authenticated:true,userId,isAnonymous}` from verified claims; 503 if Supabase is not configured | Implemented |
-| `POST /api/auth/sign-out` | Same-origin only (403 otherwise); ends this browser's session; 204 | Implemented |
+| `GET /api/auth/session` | `{authenticated:false}` or `{authenticated:true,userId,isAnonymous}` from verified claims; 503 if Supabase is unconfigured or verification is unavailable | Implemented |
+| `POST /api/auth/sign-out` | Same-origin only (403 otherwise); ends this browser's session; 204 on success, safe 503 if sign-out cannot be confirmed | Implemented |
 | `GET /api/profile` | Current actor's profile and version | Planned |
 | `PATCH /api/profile` | `updateProfileSchema`; saved profile | Planned |
 | `POST /api/conversations` | `createConversationSchema`; conversation ID and version | Planned |

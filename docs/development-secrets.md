@@ -31,6 +31,10 @@ is needed for this local decryption step.
 The unlock file contains a randomly generated passphrase for standard GPG AES256
 encryption. The passphrase and actual API keys are never printed by these commands.
 The script parses environment data as data; it does not execute shell assignments.
+It also requires `.env.local` to be ignored and untracked before importing.
+GPG must confirm successful decryption; an unencrypted OpenPGP packet is refused.
+Values that cannot round-trip safely through dotenv and Next.js expansion,
+including dollar references, are rejected before the bundle is replaced.
 
 ## What is shared
 

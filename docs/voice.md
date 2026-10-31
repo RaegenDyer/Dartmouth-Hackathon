@@ -58,7 +58,9 @@ Flux and multichannel streams require a separate adapter. Transcription does
 not authenticate the speaker. See [Deepgram transcript finality](https://developers.deepgram.com/docs/understand-endpointing-interim-results).
 
 Partial text replaces the preview; final segments append to committed draft
-text. The combined limit is 4,000 UTF-16 code units, matching the chat schema.
+text. An empty interim or final correction clears only the provisional preview,
+preserving previously committed words. The combined limit is 4,000 UTF-16 code
+units, matching the chat schema.
 Repeated phrases are legitimate; the buffer does not guess whether identical
 finals are duplicates. The future transport must prevent replay. Invalid or
 excessive updates preserve the previous draft. Text is not auto-submitted,

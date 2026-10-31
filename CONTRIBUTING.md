@@ -42,6 +42,12 @@ review reminder, not an automated block on a direct Git push.
 In Windows PowerShell, if execution policy blocks `npm.ps1`, use `npm.cmd`
 for these commands (for example, `npm.cmd ci`). No policy change is needed.
 
+The full checks also need Git and GnuPG; see the
+[local secrets guide](docs/development-secrets.md) for executable detection.
+Before the first local browser smoke test, run
+`npx playwright install chromium --only-shell`, then `npm run build` and
+`npm run test:e2e`. The five pending product flows remain explicitly skipped.
+
 For hosting setup, use [the Vercel deployment guide](docs/deployment.md).
 `vercel.json` runs the checks before building and includes development build
 tools during installation. The first foundation deployment needs no app keys.

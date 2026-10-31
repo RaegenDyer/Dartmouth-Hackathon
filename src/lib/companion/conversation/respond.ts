@@ -47,7 +47,7 @@ export interface RespondResult {
 
 export class ConversationError extends Error {
   constructor(
-    readonly code: "SESSION_NOT_FOUND" | "INVALID_MESSAGE",
+    readonly code: "SESSION_NOT_FOUND" | "INVALID_MESSAGE" | "CONTEXT_CHANGED" | "TURN_IN_PROGRESS",
     message: string,
   ) {
     super(message);
@@ -58,6 +58,26 @@ const HIDDEN_CRISIS_MESSAGE = "[Message hidden: safety resources were shown]";
 
 export function createConversationService(deps: ConversationDeps) {
   const now = deps.now ?? (() => new Date());
+  // Prevent overlapping turns in this service instance. Production repositories
+  // still need the durable turn claims described in docs/architecture.md.
+  const activeSessions = new Set<string>();
+
+  async function assertCurrentContext(session: ChatSession, revision: number, active: readonly Memory[]) {
+    const [currentSession, currentRevision] = await Promise.all([
+      deps.sessions.get(session.id),
+      deps.memories.contextRevision(session.userId),
+    ]);
+    if (!currentSession) throw new ConversationError("SESSION_NOT_FOUND", "Session not found.");
+    const checkedAt = now().getTime();
+    if (
+      currentSession.endedBySafety ||
+      currentSession.tone !== session.tone ||
+      currentRevision !== revision ||
+      active.some((memory) => memory.expiresAt && memory.expiresAt.getTime() <= checkedAt)
+    ) {
+      throw new ConversationError("CONTEXT_CHANGED", "Your conversation context changed. Please try again.");
+    }
+  }
 
   async function crisisTurn(
     session: ChatSession,
@@ -67,6 +87,7 @@ export function createConversationService(deps: ConversationDeps) {
     const at = now();
     deps.logSafety({ event: "safety_triggered", at: at.toISOString(), sessionId: session.id, stage, category });
     const crisis = buildCrisisView(await deps.contacts.getForCrisisView(session.userId));
+    if (!(await deps.sessions.get(session.id))) throw new ConversationError("SESSION_NOT_FOUND", "Session not found.");
     // The crisis message text is never persisted and never becomes a memory.
     await deps.messages.append({
       sessionId: session.id,
@@ -107,11 +128,11 @@ export function createConversationService(deps: ConversationDeps) {
       .map((message) => ({ role: message.role, content: message.text }));
   }
 
-  async function respond(sessionId: string, userMessage: string): Promise<RespondResult> {
+  async function respondTurn(sessionId: string, userMessage: string): Promise<RespondResult> {
     const session = await deps.sessions.get(sessionId);
     if (!session) throw new ConversationError("SESSION_NOT_FOUND", "Session not found.");
     const text = userMessage.trim();
-    if (!text || text.length > LIMITS.maxMessageLength || text.includes("\u0000")) {
+    if (!text || text.length > LIMITS.maxMessageLength || text.includes("\u0000") || !text.isWellFormed()) {
       throw new ConversationError("INVALID_MESSAGE", `Messages must be 1-${LIMITS.maxMessageLength} characters.`);
     }
 
@@ -121,6 +142,9 @@ export function createConversationService(deps: ConversationDeps) {
     if (session.endedBySafety) return crisisTurn(session, "input", null);
 
     const at = now();
+    // Read before loading either memories or history so even an edit-and-revert
+    // during context loading/generation invalidates this turn.
+    const revision = await deps.memories.contextRevision(session.userId);
     const allMemories = await deps.memories.list(session.userId);
     const active = allMemories.filter((memory) => !memory.expiresAt || memory.expiresAt.getTime() > at.getTime());
 
@@ -144,6 +168,9 @@ export function createConversationService(deps: ConversationDeps) {
         memories: active.map(({ id, text: memoryText }) => ({ id, text: memoryText })),
         tone: session.tone,
       });
+      // Reject changes detected after generation, before scheduling/writing.
+      // Persistent repositories still need an atomic commit with version checks.
+      await assertCurrentContext(session, revision, active);
       const outputCheck = checkReply(generated.text);
       if (outputCheck.triggered) return crisisTurn(session, "output", outputCheck.category);
       reply = stripLeakedContext(generated.text, LEAK_MARKERS);
@@ -153,7 +180,10 @@ export function createConversationService(deps: ConversationDeps) {
       reply = disclosed.replyText;
       memoriesUsed = disclosed.memoriesUsed;
     }
-    if (route !== "normal") reply = enforceAiStatus(reply, askedIfHuman);
+    if (route !== "normal") {
+      await assertCurrentContext(session, revision, active);
+      reply = enforceAiStatus(reply, askedIfHuman);
+    }
 
     let socialAction: string | null = null;
     if (route === "normal") {
@@ -204,6 +234,18 @@ export function createConversationService(deps: ConversationDeps) {
       social_action: socialAction,
       memories_created: created,
     };
+  }
+
+  async function respond(sessionId: string, userMessage: string): Promise<RespondResult> {
+    if (activeSessions.has(sessionId)) {
+      throw new ConversationError("TURN_IN_PROGRESS", "A reply is already being generated for this conversation.");
+    }
+    activeSessions.add(sessionId);
+    try {
+      return await respondTurn(sessionId, userMessage);
+    } finally {
+      activeSessions.delete(sessionId);
+    }
   }
 
   return { respond };

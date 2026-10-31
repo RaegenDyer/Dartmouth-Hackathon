@@ -1,4 +1,5 @@
 import "server-only";
+import { isAuthError, isAuthRetryableFetchError } from "@supabase/supabase-js";
 import type { ApiErrorCode } from "@/lib/contracts";
 import { publicEnvironmentSchema } from "@/lib/env/public";
 import { createRouteSupabaseClient } from "@/lib/supabase/server";
@@ -29,10 +30,20 @@ export async function getVerifiedSession(): Promise<
   { session: VerifiedSession | null; supabase: SupabaseClient } | null
 > {
   if (!isAuthConfigured()) return null;
-  const supabase = await createRouteSupabaseClient();
-  const { data, error } = await supabase.auth.getClaims();
-  const session = error || !data ? null : sessionFromVerifiedClaims(data.claims);
-  return { session, supabase };
+  try {
+    const supabase = await createRouteSupabaseClient();
+    const { data, error } = await supabase.auth.getClaims();
+    if (isAuthRetryableFetchError(error) ||
+      (isAuthError(error) && error.status !== undefined && (error.status === 429 || error.status >= 500))) {
+      return null;
+    }
+    const session = error || !data ? null : sessionFromVerifiedClaims(data.claims);
+    return { session, supabase };
+  } catch {
+    // Provider failures are unavailable, not evidence that the user signed out.
+    // Keep provider diagnostics out of responses and framework error logs.
+    return null;
+  }
 }
 
 // For private Route Handlers: returns the verified actor, or a 401/503 response.

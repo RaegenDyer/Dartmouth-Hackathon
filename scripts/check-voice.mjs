@@ -29,9 +29,24 @@ test("non-result, legacy provider, Flux, webhook, and malformed events are ignor
     { message }, { type: "transcript", role: "user", transcriptType: "final", transcript: "Hello" },
     { ...message, is_final: "true" }, { ...message, is_final: undefined },
     { ...message, channel: null }, { ...message, channel: { alternatives: [] } },
-    { ...message, channel: { alternatives: [{}] } }, withText("  ")]) {
+    { ...message, channel: { alternatives: [{}] } }]) {
     assert.equal(normalizeDeepgramTranscript(input), null);
   }
+});
+
+test("empty transcript corrections clear only the provisional preview", () => {
+  const draft = createDictationBuffer("Committed");
+  draft.apply(event("incorrect preview"));
+  const emptyPartial = normalizeDeepgramTranscript(withText("  "));
+  assert.deepEqual(emptyPartial, event(""));
+  assert.equal(draft.apply(emptyPartial).text, "Committed");
+  assert.equal(draft.read().partialText, "");
+  draft.apply(event("another incorrect preview"));
+  const emptyFinal = normalizeDeepgramTranscript({ ...withText(""), is_final: true });
+  assert.deepEqual(emptyFinal, event("", true));
+  assert.equal(draft.apply(emptyFinal).text, "Committed");
+  assert.equal(draft.read().committedText, "Committed");
+  assert.equal(draft.read().partialText, "");
 });
 
 test("only explicit single-channel microphone results are accepted", () => {

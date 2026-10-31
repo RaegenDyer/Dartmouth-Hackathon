@@ -47,7 +47,6 @@ export function normalizeDeepgramTranscript(message: unknown): VoiceTranscriptEv
   const result = deepgramTranscriptSchema.safeParse(message);
   if (!result.success) return null;
   const text = result.data.channel.alternatives[0].transcript.trim();
-  if (!text) return null;
   return { type: "transcript", text, final: result.data.is_final };
 }
 
@@ -107,7 +106,12 @@ export function createDictationBuffer(initialText = ""): DictationBuffer {
       const result = transcriptSchema.safeParse(event);
       if (!result.success) throw new TypeError("Invalid dictation transcript event.");
       const text = result.data.text.trim();
-      if (!text) return read();
+      if (!text) {
+        // An empty correction revokes only the uncommitted preview. Ignoring it
+        // would leave words visible after the provider stopped recognizing them.
+        partialText = "";
+        return read();
+      }
       // Validate the combined length before changing state. Partial text is a
       // replaceable preview; a final event commits one segment and clears it.
       const combined = appendSegment(committedText, text);

@@ -122,6 +122,27 @@ describe("respond()", () => {
     expect(seen.at(-1)?.join(" ")).not.toMatch(/roommate/);
   });
 
+  it("does not reuse forgotten history after clearing all memories", async () => {
+    let clock = 1_000;
+    const seen: string[][] = [];
+    const app = createInMemoryCompanion({
+      now: () => new Date(clock),
+      llm: {
+        generate: async (request) => {
+          seen.push(request.history.map((turn) => turn.content));
+          return { text: "Hello", memoriesUsed: [] };
+        },
+      },
+    });
+    const session = await app.deps.sessions.create("u1", new Date(clock));
+    await app.respond(session.id, "My roommate is hard to live with.");
+    clock = 2_000;
+    await app.deps.memories.deleteAllForUser("u1");
+    clock = 3_000;
+    await app.respond(session.id, "Hello");
+    expect(seen.at(-1)).toEqual([]);
+  });
+
   it("enforces the maximum message length", async () => {
     const { app, session } = await setup();
     await expect(app.respond(session.id, "x".repeat(LIMITS.maxMessageLength + 1))).rejects.toMatchObject({
@@ -129,11 +150,171 @@ describe("respond()", () => {
     });
   });
 
+  it.each(["\uD800", "\uDC00"])("rejects malformed Unicode before persistence", async (invalid) => {
+    const { app, session } = await setup();
+    await expect(app.respond(session.id, `Hello ${invalid}`)).rejects.toMatchObject({ code: "INVALID_MESSAGE" });
+    expect(await app.deps.messages.listForSession(session.id)).toEqual([]);
+  });
+
   it("suggests at most one social action per week", async () => {
     const { app, session } = await setup();
     const results = [];
     for (let index = 0; index < 5; index += 1) results.push(await app.respond(session.id, `message ${index}`));
     expect(results.filter((result) => result.social_action)).toHaveLength(1);
+  });
+
+  it.each(["delete", "edit", "expire"] as const)("discards an in-flight reply after a memory %s", async (change) => {
+    let clock = 1_000;
+    let started!: () => void;
+    let finish!: (reply: { text: string; memoriesUsed: string[] }) => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const generated = new Promise<{ text: string; memoriesUsed: string[] }>((resolve) => {
+      finish = resolve;
+    });
+    let calls = 0;
+    const llm: LlmAdapter = {
+      generate: async () => {
+        if (calls++ > 0) return { text: "Fresh reply", memoriesUsed: [] };
+        started();
+        return generated;
+      },
+    };
+    const app = createInMemoryCompanion({ llm, now: () => new Date(clock) });
+    const session = await app.deps.sessions.create("u1", new Date(clock));
+    const memory = await app.deps.memories.create("u1", "You have a dog.", new Date(clock));
+    if (change === "expire") await app.deps.memories.setExpiry("u1", memory.id, new Date(2_000), new Date(clock));
+    const pending = app.respond(session.id, "Hello");
+    await ready;
+    if (change === "delete") await app.deps.memories.delete("u1", memory.id);
+    if (change === "edit") await app.deps.memories.updateText("u1", memory.id, "You have a cat.");
+    if (change === "expire") clock = 2_000;
+    finish({ text: "How is your dog?", memoriesUsed: [memory.id] });
+    await expect(pending).rejects.toMatchObject({ code: "CONTEXT_CHANGED" });
+    expect(await app.deps.messages.listForSession(session.id)).toEqual([]);
+    expect(await app.deps.socialActions.lastSuggestedAt("u1")).toBeNull();
+    expect((await app.deps.sessions.get(session.id))?.disclosed).toBe(false);
+    expect((await app.respond(session.id, "Try again")).reply_text).toContain("Fresh reply");
+  });
+
+  it("does not recreate account data when deletion happens during generation", async () => {
+    let started!: () => void;
+    let finish!: (reply: { text: string; memoriesUsed: string[] }) => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const generated = new Promise<{ text: string; memoriesUsed: string[] }>((resolve) => {
+      finish = resolve;
+    });
+    const app = createInMemoryCompanion({
+      llm: {
+        generate: async () => {
+          started();
+          return generated;
+        },
+      },
+    });
+    const session = await app.deps.sessions.create("u1", new Date());
+    const pending = app.respond(session.id, "I live in Hanover.");
+    await ready;
+    await deleteAccountData(app.deps, "u1");
+    finish({ text: "Hello", memoriesUsed: [] });
+    await expect(pending).rejects.toMatchObject({ code: "SESSION_NOT_FOUND" });
+    expect(await app.deps.sessions.listForUser("u1")).toEqual([]);
+    expect(app.deps.messages.allForUser("u1")).toEqual([]);
+    expect(await app.deps.memories.list("u1")).toEqual([]);
+    expect(await app.deps.socialActions.lastSuggestedAt("u1")).toBeNull();
+  });
+
+  it("discards edit-and-revert context changes even within the same millisecond", async () => {
+    const clock = new Date(1_000);
+    let started!: () => void;
+    let finish!: (reply: { text: string; memoriesUsed: string[] }) => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const generated = new Promise<{ text: string; memoriesUsed: string[] }>((resolve) => {
+      finish = resolve;
+    });
+    const app = createInMemoryCompanion({
+      now: () => new Date(clock),
+      llm: {
+        generate: async () => {
+          started();
+          return generated;
+        },
+      },
+    });
+    const session = await app.deps.sessions.create("u1", clock);
+    const memory = await app.deps.memories.create("u1", "You have a dog.", clock);
+    // Establish an existing edit at the same timestamp: Date comparisons and a
+    // snapshot that includes editedByUser would both miss the following change.
+    await app.deps.memories.updateText("u1", memory.id, memory.text);
+    const pending = app.respond(session.id, "Hello");
+    await ready;
+    await app.deps.memories.updateText("u1", memory.id, "You have a cat.");
+    await app.deps.memories.updateText("u1", memory.id, memory.text);
+    finish({ text: "How is your dog?", memoriesUsed: [memory.id] });
+    await expect(pending).rejects.toMatchObject({ code: "CONTEXT_CHANGED" });
+    expect(await app.deps.messages.listForSession(session.id)).toEqual([]);
+    expect(await app.deps.socialActions.lastSuggestedAt("u1")).toBeNull();
+  });
+
+  it("does not recreate a deleted account while the crisis view loads", async () => {
+    let started!: () => void;
+    let finish!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const waiting = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const app = createInMemoryCompanion();
+    const session = await app.deps.sessions.create("u1", new Date());
+    app.deps.contacts.getForCrisisView = async () => {
+      started();
+      await waiting;
+      return null;
+    };
+    const pending = app.respond(session.id, "I want to end my life.");
+    await ready;
+    await deleteAccountData(app.deps, "u1");
+    finish();
+    await expect(pending).rejects.toMatchObject({ code: "SESSION_NOT_FOUND" });
+    expect(app.deps.messages.allForUser("u1")).toEqual([]);
+    expect(await app.deps.sessions.listForUser("u1")).toEqual([]);
+  });
+
+  it("rejects overlapping turns without calling the model twice and releases the session afterwards", async () => {
+    let calls = 0;
+    let started!: () => void;
+    let finish!: (reply: { text: string; memoriesUsed: string[] }) => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const generated = new Promise<{ text: string; memoriesUsed: string[] }>((resolve) => {
+      finish = resolve;
+    });
+    const app = createInMemoryCompanion({
+      llm: {
+        generate: async () => {
+          calls += 1;
+          started();
+          return generated;
+        },
+      },
+    });
+    const session = await app.deps.sessions.create("u1", new Date());
+    const pending = app.respond(session.id, "First");
+    await ready;
+    await expect(app.respond(session.id, "Overlapping")).rejects.toMatchObject({ code: "TURN_IN_PROGRESS" });
+    expect(calls).toBe(1);
+    finish({ text: "Hello", memoriesUsed: [] });
+    await pending;
+    await app.respond(session.id, "Next");
+    expect(calls).toBe(2);
+    expect(await app.deps.messages.listForSession(session.id)).toHaveLength(4);
   });
 });
 
@@ -177,5 +358,45 @@ describe("account deletion", () => {
     expect(await app.deps.contacts.getForCrisisView("u1")).toBeNull();
     expect(await app.deps.socialActions.lastSuggestedAt("u1")).toBeNull();
     expect(await app.deps.sessions.listForUser("u1")).toEqual([]);
+  });
+
+  it("cannot recreate a deleted session through a stale repository update", async () => {
+    const { app, session } = await setup();
+    await app.deps.sessions.deleteAllForUser("u1");
+    await expect(app.deps.sessions.update({ ...session, disclosed: true })).rejects.toThrow("Session not found");
+    expect(await app.deps.sessions.listForUser("u1")).toEqual([]);
+  });
+});
+
+describe("in-memory conversation snapshots", () => {
+  it("keeps stored session and message dates independent of callers", async () => {
+    const { app, session } = await setup();
+    const startedAt = new Date(session.startedAt);
+    session.startedAt.setTime(0);
+    expect((await app.deps.sessions.get(session.id))?.startedAt).toEqual(startedAt);
+    const updated = await app.deps.sessions.get(session.id);
+    await app.deps.sessions.update({ ...updated!, disclosed: true });
+    updated?.startedAt.setTime(0);
+    expect((await app.deps.sessions.listForUser("u1"))[0]?.startedAt).toEqual(startedAt);
+
+    const createdAt = new Date("2026-10-31T12:00:00Z");
+    const appended = await app.deps.messages.append({
+      sessionId: session.id,
+      userId: "u1",
+      role: "user",
+      text: "Hello",
+      createdAt,
+      safety: false,
+    });
+    createdAt.setTime(0);
+    appended.createdAt.setTime(0);
+    const listed = await app.deps.messages.listForSession(session.id);
+    expect(listed[0]?.createdAt.toISOString()).toBe("2026-10-31T12:00:00.000Z");
+    app.deps.messages.allForUser("u1")[0]!.text = "mutated";
+    listed[0]?.createdAt.setTime(0);
+    expect((await app.deps.messages.listForSession(session.id))[0]).toMatchObject({
+      text: "Hello",
+      createdAt: new Date("2026-10-31T12:00:00Z"),
+    });
   });
 });

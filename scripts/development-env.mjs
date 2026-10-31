@@ -62,7 +62,10 @@ export function validateSharedSettings(settings) {
 
 function assignment(name, value) {
   const line = `${name}=${JSON.stringify(value)}`;
-  if (parseEnv(line)[name] !== value) throw new Error("A setting cannot be represented safely in dotenv format.");
+  // Next.js expands $references even inside quotes; Node's parser does not.
+  if (value.includes("$") || parseEnv(line)[name] !== value) {
+    throw new Error("A setting cannot be represented safely in dotenv format.");
+  }
   return line;
 }
 
@@ -97,11 +100,15 @@ export function findGpg() {
   throw new Error("GPG is required. Install GnuPG or set GPG_BINARY to its executable; Git for Windows includes it.");
 }
 
-function ensureIgnoredKey(paths) {
-  const result = spawnSync("git", ["-C", paths.root, "check-ignore", "--quiet", paths.key], {
+function ensureIgnoredPath(paths, path, label) {
+  const result = spawnSync("git", ["-C", paths.root, "check-ignore", "--quiet", path], {
     shell: false, windowsHide: true, stdio: "ignore", timeout: 10_000,
   });
-  if (result.status !== 0) throw new Error("The .secrets key path must be ignored by Git before use.");
+  if (result.status !== 0) throw new Error(`The ${label} path must be ignored by Git before use.`);
+}
+
+function ensureIgnoredKey(paths) {
+  ensureIgnoredPath(paths, paths.key, ".secrets key");
 }
 
 function verifyKey(paths) {
@@ -123,7 +130,7 @@ function runGpg(paths, gpg, operation, input) {
     ? path.replaceAll("\\", "/").replace(/^([A-Za-z]):/u, (_, drive) => `/${drive.toLowerCase()}`)
     : path;
   const args = [
-    "--no-options", "--homedir", gpgPath(paths.home), "--batch", "--no-tty", "--pinentry-mode", "loopback",
+    "--no-options", "--homedir", gpgPath(paths.home), "--batch", "--no-tty", "--pinentry-mode", "loopback", "--status-fd", "2",
     "--no-symkey-cache", "--passphrase-file", gpgPath(paths.key), "--output", "-",
     ...(operation === "encrypt"
       ? ["--symmetric", "--cipher-algo", "AES256", "--compress-algo", "none", "--s2k-mode", "3", "--s2k-count", "65011712"]
@@ -133,7 +140,10 @@ function runGpg(paths, gpg, operation, input) {
     input, shell: false, windowsHide: true, maxBuffer: MAX_BYTES, timeout: 30_000,
     stdio: ["pipe", "pipe", "pipe"],
   });
-  if (result.error || result.status !== 0 || !result.stdout?.length) {
+  // --decrypt also accepts unencrypted literal-data packets and exits zero.
+  // Require GPG's decryption status so a forged plaintext packet cannot import.
+  const decrypted = /^\[GNUPG:\] DECRYPTION_OKAY\r?$/mu.test(result.stderr?.toString("utf8") ?? "");
+  if (result.error || result.status !== 0 || !result.stdout?.length || (operation === "decrypt" && !decrypted)) {
     throw new Error(operation === "encrypt"
       ? "GPG could not encrypt the development settings. No secret values were printed."
       : "GPG could not decrypt the bundle. Check the unlock file and bundle integrity.");
@@ -176,6 +186,7 @@ export function encryptDevelopmentEnvironment(root, { gpg = findGpg() } = {}) {
 
 export function pullDevelopmentEnvironment(root, { merge = false, gpg = findGpg() } = {}) {
   const paths = locations(root);
+  ensureIgnoredPath(paths, paths.local, ".env.local");
   const existing = existsSync(paths.local);
   if (existing && !merge) throw new Error(".env.local already exists. Use --merge to fill only missing or blank settings.");
   if (!existsSync(paths.bundle)) throw new Error("The encrypted development bundle is missing; pull the current repository first.");

@@ -2,7 +2,7 @@
 
 ## Start here: agent handoff
 
-**Status as of October 30, 2026: the technical foundation is ready for feature
+**Status as of October 31, 2026: the technical foundation is ready for feature
 implementation. The app is not yet a working end-to-end product or a deployed
 website.** The foundation has been merged into `main` through PR #1.
 
@@ -24,7 +24,7 @@ choose and code its own style. No direction has been selected yet.
 
 | Area | Actual progress | Still needed |
 | --- | --- | --- |
-| Application framework | Next.js/React/TypeScript starter runs without credentials. `/` is a preparation page; `GET /api/health` is the only implemented API route. | Product interface and application endpoints |
+| Application framework | Next.js/React/TypeScript starter runs without credentials. `/` is a preparation page; health, session inspection, and sign-out routes exist. | Product interface and feature endpoints |
 | Anthropic | Credentials verified with a successful live text request. Server-only SDK client factory exists. | Connect the app to a model request/response flow; choose model and usage limits |
 | Supabase | Project access, a read-only SQL query, and authentication-configuration access verified. Browser/server client factories exist. Auth plumbing: session-refresh Proxy (`src/proxy.ts`), `getClaims()`-verified actor helper (`requireSession` in `src/lib/auth/server.ts`), same-origin mutation guard, `GET /api/auth/session`, and `POST /api/auth/sign-out`; unit-tested with a mocked client and smoke-tested without credentials. | Choose the sign-in method (anonymous vs. permanent accounts) and build sign-in/callback; verify against the hosted project; login UI waits on the design checkpoint; user-scoped repositories and an applied schema |
 | Data model | Draft migration for profiles, conversations, messages, memory proposals, memories, and social actions; 37 isolated PostgreSQL behavior checks pass, including expiry and input-bound regressions. | Revise tables to match chosen features; verify real Supabase Auth/Data API behavior and concurrency before application |
@@ -39,8 +39,9 @@ choose and code its own style. No direction has been selected yet.
 
 The model client factory does not implement chat. Auth verifies and signs out
 existing sessions, but no sign-in method exists yet. A migration file does not mean the hosted database has
-that schema. Only the preparation page and liveness route currently run in the
-application; normal startup makes no Anthropic or Supabase calls.
+that schema. The preparation page, liveness route, and auth routes run in the
+application; the default unconfigured preparation app makes no provider calls.
+Companion services have no public feature routes yet.
 
 ### Verified baseline
 
@@ -53,9 +54,9 @@ and the pending collaborator style decision remain as documented above.
 Current local verification:
 
 - Clean dependency installation with `npm ci`.
-- `npm run check`: lint, formatting, TypeScript, 150 Vitest unit tests,
-  9 contract checks, 16 runtime/configuration checks, 11 voice-input checks,
-  7 Tavus contract checks, 6 encrypted-environment checks, and 37 isolated
+- `npm run check`: lint, formatting, TypeScript, 178 Vitest unit tests,
+  9 contract checks, 16 runtime/configuration checks, 12 voice-input checks,
+  7 Tavus contract checks, 9 encrypted-environment checks, and 37 isolated
   database checks. These require no
   service credentials or paid provider calls.
 - `npm run build`: production build.
@@ -64,6 +65,13 @@ Current local verification:
 - Local production-server smoke checks: preparation page and health endpoint
   succeed, unsupported health writes return 405, and the unimplemented chat
   endpoint returns 404.
+
+The October 31 review adds regressions for stale memory context after generation,
+overlapping turns, memory-limit races, mutable repository snapshots, provider
+outages, ignored model cancellation, and encrypted-settings import failures.
+Sign-out avoids a redundant claims lookup, and memory insertion no longer sorts
+and copies rows to check capacity. See the [review limits](docs/milestone-1-report.md#october-31-review-and-self-critique)
+before treating the in-memory services as production persistence.
 
 CI (`.github/workflows/ci.yml`) runs separate jobs named `lint` (ESLint and
 Prettier), `typecheck`, `unit` (Vitest plus the contract/runtime/schema checks),

@@ -6,7 +6,7 @@ import { join, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { parseEnv } from "node:util";
 import {
-  collectSharedSettings, encryptDevelopmentEnvironment, findGpg,
+  APP_SETTINGS, collectSharedSettings, encryptDevelopmentEnvironment, findGpg,
   pullDevelopmentEnvironment, validateSharedSettings,
 } from "./development-env.mjs";
 
@@ -66,6 +66,8 @@ test("unsupported or privileged public Supabase settings cannot be shared or imp
 test("GPG encryption roundtrip is opaque and import refuses to overwrite an existing env", () => {
   const owner = workspace();
   fixture(owner);
+  const punctuationKey = "dummy:token/with+punctuation=.#'";
+  writeFileSync(join(owner, ".env.local"), readFileSync(join(owner, ".env.local"), "utf8") + `TAVUS_API_KEY="${punctuationKey}"\n`);
   const encrypted = encryptDevelopmentEnvironment(owner, { gpg });
   const bytes = readFileSync(encrypted.bundlePath);
   assert.equal(bytes.includes(Buffer.from("dummy-deepgram")), false);
@@ -82,9 +84,22 @@ test("GPG encryption roundtrip is opaque and import refuses to overwrite an exis
   const imported = parseEnv(readFileSync(join(recipient, ".env.local"), "utf8"));
   assert.equal(imported.DEEPGRAM_API_KEY, "dummy-deepgram");
   assert.equal(imported.ANTHROPIC_API_KEY, "dummy-anthropic");
+  assert.equal(imported.TAVUS_API_KEY, punctuationKey);
   assert.equal(imported.VOICE_INPUT_ENABLED, "false");
   assert.equal(imported.CONTACT_ENCRYPTION_KEY, "");
   assert.equal(Object.hasOwn(imported, "GITHUB_TOKEN"), false);
+
+  // Exercise the application's actual dotenv loader, isolated from this process
+  // and any ambient provider settings. It reads only the dummy checkout.
+  const env = { ...process.env };
+  for (const name of [...APP_SETTINGS, "LLM_ADAPTER", "VOICE_INPUT_ENABLED", "TAVUS_AUDIO_ENABLED"]) delete env[name];
+  const loaded = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    import nextEnv from '@next/env';
+    const result = nextEnv.loadEnvConfig(process.argv[1], true, { error() {} }, true);
+    process.stdout.write(JSON.stringify(result.parsedEnv));
+  `, recipient], { env, encoding: "utf8", shell: false, windowsHide: true, timeout: 10_000 });
+  assert.equal(loaded.status, 0);
+  assert.deepEqual(JSON.parse(loaded.stdout), imported);
 });
 
 test("merge fills blanks while preserving existing personal keys and formatting", () => {
@@ -133,4 +148,51 @@ test("missing original unlock file and unignored key paths fail closed", () => {
   assert.equal(existsSync(join(root, ".secrets", "development-env.key")), false);
   writeFileSync(join(root, ".gitignore"), ".env.local\n");
   assert.throws(() => encryptDevelopmentEnvironment(root, { gpg }), /must be ignored/);
+});
+
+test("an unencrypted OpenPGP literal packet cannot masquerade as the encrypted bundle", () => {
+  const root = workspace();
+  fixture(root);
+  mkdirSync(join(root, ".secrets"));
+  mkdirSync(join(root, "secrets"));
+  writeFileSync(join(root, ".secrets", "development-env.key"), "a".repeat(43) + "\n");
+  const original = readFileSync(join(root, ".env.local"), "utf8");
+  const encrypted = encryptDevelopmentEnvironment(root, { gpg });
+  const authentic = readFileSync(encrypted.bundlePath);
+  const plaintext = Buffer.from("LLM_ADAPTER=mock\nVOICE_INPUT_ENABLED=false\nTAVUS_AUDIO_ENABLED=false\nDEEPGRAM_API_KEY=dummy-injection\n");
+  // OpenPGP tag 11: binary format, no filename, zero timestamp, literal text.
+  const body = Buffer.concat([Buffer.from([0x62, 0, 0, 0, 0, 0]), plaintext]);
+  assert.ok(body.length < 192);
+  const forged = Buffer.concat([Buffer.from([0xcb, body.length]), body]);
+  for (const packet of [forged, Buffer.concat([authentic, forged]), Buffer.concat([forged, authentic])]) {
+    writeFileSync(encrypted.bundlePath, packet);
+    assert.throws(() => pullDevelopmentEnvironment(root, { gpg, merge: true }), /could not decrypt/);
+    assert.equal(readFileSync(join(root, ".env.local"), "utf8"), original);
+  }
+});
+
+test("import refuses tracked or unignored plaintext destinations before writing", () => {
+  const root = workspace();
+  fixture(root);
+  encryptDevelopmentEnvironment(root, { gpg });
+  const original = readFileSync(join(root, ".env.local"), "utf8");
+  writeFileSync(join(root, ".gitignore"), ".secrets/\ncredentials.env\n");
+  assert.throws(() => pullDevelopmentEnvironment(root, { gpg, merge: true }), /\.env\.local path must be ignored/);
+  writeFileSync(join(root, ".gitignore"), ".secrets/\n.env.local\ncredentials.env\n");
+  const staged = spawnSync("git", ["-C", root, "add", "--force", ".env.local"], { shell: false, windowsHide: true, stdio: "ignore" });
+  assert.equal(staged.status, 0);
+  assert.throws(() => pullDevelopmentEnvironment(root, { gpg, merge: true }), /\.env\.local path must be ignored/);
+  assert.equal(readFileSync(join(root, ".env.local"), "utf8"), original);
+});
+
+test("unsupported dotenv values fail closed without replacing the encrypted bundle", () => {
+  const root = workspace();
+  fixture(root);
+  const encrypted = encryptDevelopmentEnvironment(root, { gpg });
+  const original = readFileSync(encrypted.bundlePath);
+  for (const value of ["dummy$other", "dummy${OTHER}", "dummy\\path", 'dummy"quote']) {
+    writeFileSync(join(root, ".env.local"), `TAVUS_API_KEY='${value}'\n`);
+    assert.throws(() => encryptDevelopmentEnvironment(root, { gpg }), /represented safely in dotenv/);
+    assert.deepEqual(readFileSync(encrypted.bundlePath), original);
+  }
 });

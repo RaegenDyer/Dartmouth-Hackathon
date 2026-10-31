@@ -75,9 +75,17 @@ export const FALLBACK_REPLY = "Sorry, I'm having trouble replying right now. Cou
 /** Runs the adapter with the configured timeout, returning a fallback on failure. */
 export async function generateWithTimeout(adapter: LlmAdapter, request: LlmRequest): Promise<LlmReply> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), LIMITS.llmTimeoutMs);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // Aborting is advisory: a custom adapter may ignore the signal. Race the
+  // result against a deadline so the caller and its turn lock still finish.
+  const deadline = new Promise<LlmReply>((resolve) => {
+    timer = setTimeout(() => {
+      resolve({ text: FALLBACK_REPLY, memoriesUsed: [] });
+      controller.abort();
+    }, LIMITS.llmTimeoutMs);
+  });
   try {
-    return await adapter.generate(request, controller.signal);
+    return await Promise.race([adapter.generate(request, controller.signal), deadline]);
   } catch {
     return { text: FALLBACK_REPLY, memoriesUsed: [] };
   } finally {

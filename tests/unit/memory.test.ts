@@ -42,6 +42,41 @@ describe("memory store", () => {
     for (let index = 0; index < LIMITS.maxMemoriesPerUser; index += 1) await store.create("u1", `Fact ${index}`, now);
     await expect(store.create("u1", "One more", now)).rejects.toMatchObject({ code: "LIMIT_REACHED" });
   });
+
+  it("enforces the memory cap across concurrent creates", async () => {
+    const store = new InMemoryMemoryRepository();
+    const attempts = await Promise.allSettled(
+      Array.from({ length: LIMITS.maxMemoriesPerUser + 5 }, (_, index) => store.create("u1", `Fact ${index}`, now)),
+    );
+    expect(attempts.filter((attempt) => attempt.status === "fulfilled")).toHaveLength(LIMITS.maxMemoriesPerUser);
+    expect(await store.list("u1")).toHaveLength(LIMITS.maxMemoriesPerUser);
+  });
+
+  it("refuses invalid expiry dates without changing the memory", async () => {
+    const store = new InMemoryMemoryRepository();
+    const memory = await store.create("u1", "You have a dog.", now);
+    await expect(store.setExpiry("u1", memory.id, new Date("invalid"), now)).rejects.toMatchObject({
+      code: "INVALID_EXPIRY",
+    });
+    expect((await store.list("u1"))[0]?.expiresAt).toBeNull();
+  });
+
+  it.each(["\uD800", "\uDC00"])("refuses malformed Unicode but preserves valid emoji", async (invalid) => {
+    const store = new InMemoryMemoryRepository();
+    await expect(store.create("u1", `Your name ${invalid}`, now)).rejects.toMatchObject({ code: "INVALID_TEXT" });
+    expect((await store.create("u1", "You like cats 🐱.", now)).text).toBe("You like cats 🐱.");
+  });
+
+  it("does not expose the mutable context-invalidation timestamp", async () => {
+    const clock = new Date(now);
+    const store = new InMemoryMemoryRepository(() => clock);
+    const memory = await store.create("u1", "You have a dog.", now);
+    await store.updateText("u1", memory.id, "You have a cat.");
+    clock.setTime(0);
+    expect(await store.lastUserChangeAt("u1")).toEqual(now);
+    (await store.lastUserChangeAt("u1"))?.setTime(0);
+    expect(await store.lastUserChangeAt("u1")).toEqual(now);
+  });
 });
 
 describe("memory capture", () => {

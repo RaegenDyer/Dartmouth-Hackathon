@@ -78,8 +78,8 @@ information in public static page data, metadata, or logs.
 
 Use Supabase Auth. Verify identity with `getClaims()` or, where a fresh user
 record is required, `getUser()`. Do not authorize using the user object from an
-unverified `getSession()` call. Build cookie refresh handling and sign-out as part
-of the authentication feature; the factory helpers alone do not implement them.
+unverified `getSession()` call. Cookie refresh and sign-out plumbing now exist;
+sign-in, feature-route integration, and hosted-session verification remain.
 
 The browser submits resource IDs, never a trusted `userId`. The server derives an
 actor from verified identity and queries through that user's Supabase session.
@@ -99,8 +99,9 @@ signup, add SMTP, or introduce an OAuth provider merely to finish the scaffold.
    model call. Serialize active turns per conversation and enforce a shared
    per-user request/token budget; process memory is not a durable rate limiter.
 3. Route inputs outside the product boundary to the reviewed support/handoff
-   flow. This is a product policy decision, not a diagnosis. No classifier or
-   safety detector has been implemented or validated in this preparation.
+   flow. This is a product policy decision, not a diagnosis. The companion
+   scaffold has deterministic routing checks; these have not been validated
+   for real-world use and do not establish reliable crisis detection.
 4. Load the profile, current approved/unexpired memories, and a bounded window of
    turns from the current context epoch. Fetch history server-side.
 5. Build system instructions separately from untrusted user content, saved facts,
@@ -124,6 +125,16 @@ by the health route or model-client factory. The atomic turn-claim/rate-budget
 operation still needs its own migration and integration tests before chat goes
 live. The initial schema's message uniqueness alone does not solve in-flight
 provider retries or duplicate generations.
+
+The in-memory companion service currently rejects overlapping turns in one
+service instance and rechecks the session, monotonic memory revision, and expiry
+after model generation. This discards detected stale results, including
+same-millisecond edits that restore the original text. Later suggestion and
+persistence operations still contain separate awaits, so this is not an atomic
+commit or protection across server instances. Its model timeout bounds caller
+waiting even if an adapter ignores abort; such an adapter can continue provider
+work afterward. Hosted repositories need durable claims and transaction/version
+checks before feature routes are exposed.
 
 Stored text remains untrusted, including rows labelled as assistant messages:
 ownership rules alone do not prove that a provider authored a row. Do not use
