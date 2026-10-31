@@ -83,6 +83,13 @@ preview builds; use designated development settings when previews need services.
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe `sb_publishable_` key; legacy `anon` JWT supported |
 | `ANTHROPIC_API_KEY` | Server-only app key, stored as a sensitive environment variable |
 | `ANTHROPIC_MODEL` | Model ID available to the configured Anthropic workspace |
+| `VOICE_INPUT_ENABLED` | Optional server flag; leave `false` while live voice is unimplemented |
+| `VAPI_PRIVATE_KEY` | Optional server-only Vapi key; never a public variable |
+| `VAPI_ASSISTANT_ID` | Optional server-only approved assistant UUID |
+
+The [voice-input architecture](voice.md) remains disabled and makes no calls.
+The first foundation deployment needs no Vapi values. Enabling configuration
+alone does not implement voice; use the documented activation work first.
 
 Configure the two public Supabase values together. Partial or privileged public
 configuration fails before bundling. Never add `GITHUB_TOKEN`, `VERCEL_TOKEN`,

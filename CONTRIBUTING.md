@@ -61,6 +61,13 @@ Only these values are application settings:
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe application identity; RLS still required |
 | `ANTHROPIC_API_KEY` | Server only |
 | `ANTHROPIC_MODEL` | Server only; a model ID available to the configured workspace |
+| `VOICE_INPUT_ENABLED` | Optional server flag; defaults to `false`; configuration only |
+| `VAPI_PRIVATE_KEY` | Server only; optional while voice is disabled |
+| `VAPI_ASSISTANT_ID` | Server only; optional while voice is disabled |
+
+The [Vapi voice-input preparation](docs/voice.md) adds no live calls or microphone
+UI. Leave it disabled for text work. Its private configuration must not be sent
+to a browser, and enabling the flag alone does not implement the voice feature.
 
 Use an HTTP(S) Supabase URL and an `sb_publishable_` key; legacy `anon` JWTs
 also work. Secret keys and `service_role` JWTs are rejected. Both public settings
@@ -104,7 +111,7 @@ unrelated changes out of the same branch.
   with separate users, before applying a migration to the shared app database.
 - CI uses no provider credentials. SQL checks run only in an isolated in-memory
   PostgreSQL instance; CI does not apply SQL to Supabase or deploy the app.
-- `npm run check` includes request-contract and runtime-configuration regression
+- `npm run check` includes request-contract, runtime-configuration, and dictation
   checks as well as lint, types, and SQL behavior. They use fake settings and do
   not call paid services. CI also runs `npm audit --audit-level=moderate`.
 - `minimatch` is pinned to 11.0.1 through an npm override to fix the lint

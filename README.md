@@ -31,6 +31,7 @@ choose and code its own style. No direction has been selected yet.
 | Vercel | Account access verified; `vercel.json` configures Next.js, locked installation with build tools, and checks before building. [Deployment guide](docs/deployment.md) prepared. | Import the GitHub repository and create the project; initial foundation needs no app variables; no deployment has been performed |
 | GitHub | Public repository on `main`; access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, validated runtime/build configuration, and provider factories; contract and configuration regression checks. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
+| Optional voice input | [Vapi architecture](docs/voice.md), session/provider interfaces, user-transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default. | Assistant/account setup, verified-user session bootstrap, actual SDK transport, no-spoken-reply/cost validation, and browser/device checks; no microphone or calls run yet |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
 
 The model client factory does not implement chat. The Supabase factories do not
@@ -49,8 +50,9 @@ and the pending collaborator style decision remain as documented above.
 Current local verification:
 
 - Clean dependency installation with `npm ci`.
-- `npm run check`: lint, TypeScript, 9 contract checks, 10 runtime/configuration
-  checks, and 37 isolated database checks. These require no service credentials.
+- `npm run check`: lint, TypeScript, 9 contract checks, 13 runtime/configuration
+  checks, 9 voice-input checks, and 37 isolated database checks. These require no
+  service credentials or paid provider calls.
 - `npm run build`: production build.
 - `npm audit`: zero reported vulnerabilities after updating the lint toolchain's
   transitive `minimatch` dependency through a pinned override.
@@ -109,6 +111,8 @@ or program, helping them build human connections. **Designed to be uninstalled**
 is a working principle. The name, visual direction, and detailed features are
 not finalized. Text input and text output are the working scope; optional
 speech-to-text input can be added later. Voice responses are not currently planned.
+Vapi is selected for that optional input path; its disabled architecture and
+transcript handling are prepared without a live provider connection.
 
 ## Start locally
 
@@ -153,6 +157,7 @@ src/lib/domain/              Service boundary interfaces
 src/lib/anthropic/           Server-only model client factory
 src/lib/supabase/            Browser and server client factories
 src/lib/env/                 Explicit runtime configuration boundaries
+src/lib/voice/               Optional dictation ports, transcript buffer, server config
 supabase/migrations/         Reviewable database changes; not applied automatically
 docs/                        Architecture, contracts, decisions, implementation order
 .github/workflows/           Checks; no production deployment workflow yet

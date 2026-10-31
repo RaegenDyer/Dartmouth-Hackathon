@@ -11,6 +11,8 @@ text flow before adding dictation or additional conversation scenarios.
 - Application configuration example separate from management credentials.
 - Draft SQL/data model and documented ownership/memory invariants.
 - Contributor instructions and credential-free CI checks.
+- Optional Vapi input interfaces, transcript normalization/editable buffer, and
+  disabled server configuration; live audio/session transport is not implemented.
 
 ## Build order and acceptance criteria
 
@@ -51,8 +53,10 @@ hackathon prototype can already claim.
 
 ## Later additions
 
-Optional microphone input should produce editable text and require a Send
-action. Add a transcription adapter only after choosing supported browsers and
-handling microphone consent and audio retention. Voice output, autonomous
+Optional Vapi microphone input should produce editable text and require a Send
+action. The [voice-input foundation](voice.md) is prepared; implement the actual
+SDK transport only after selecting supported browsers, verifying no spoken
+replies and cost behavior, and handling microphone consent and audio retention.
+Voice output, autonomous
 outreach, live web search, a separate agent framework, and a vector database are
 not prerequisites for this demo.
