@@ -2,9 +2,13 @@
 // Supabase roles and auth.uid() are minimal stubs, not a JWT/Data API integration.
 import { PGlite } from '@electric-sql/pglite';
 import { readFile } from 'node:fs/promises';
+import { randomBytes, randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { sealText, openText } from '../src/lib/crypto/seal.ts';
+import { LIMITS } from '../src/lib/companion/limits.ts';
 const db = await PGlite.create();
-const sources = ['202610300001_initial_schema.sql', '202610310001_chat_persistence.sql']
+const sources = ['202610300001_initial_schema.sql', '202610310001_chat_persistence.sql',
+  '202610310002_ciphertext_capacity.sql']
   .map(name => new URL('../supabase/migrations/' + name, import.meta.url));
 let checks = 0;
 function pass(label) { checks++; console.log('PASS ' + label); }
@@ -57,7 +61,7 @@ try {
   await expectError('cross-user conversation attachment denied', 'insert into public.messages(user_id,conversation_id,role,content,client_request_id) values ($1,$2,$3,$4,$5)', [A, cb, 'user', 'test', requestId], ['P0002','23503','42501']);
   await expectError('oversized padded message rejected', 'insert into public.messages(user_id,conversation_id,role,content,client_request_id) values ($1,$2,$3,$4,$5)', [A, ca, 'user', 'hello' + ' '.repeat(12000), requestId], ['23514']);
   const ma = (await db.query('insert into public.messages(user_id,conversation_id,role,content,client_request_id) values ($1,$2,$3,$4,$5) returning id', [A, ca, 'user', 'I like hiking.', requestId])).rows[0].id;
-  await expectError('oversized padded proposal rejected', 'insert into public.memory_proposals(user_id,conversation_id,suggested_content) values ($1,$2,$3)', [A, ca, 'Hikes.' + ' '.repeat(1000)], ['23514']);
+  await expectError('oversized padded proposal ciphertext rejected', 'insert into public.memory_proposals(user_id,conversation_id,suggested_content) values ($1,$2,$3)', [A, ca, 'Hikes.' + ' '.repeat(2048)], ['23514']);
   const p1 = (await db.query('insert into public.memory_proposals(user_id,conversation_id,source_message_id,suggested_content) values ($1,$2,$3,$4) returning id', [A, ca, ma, 'I like hiking.'])).rows[0].id;
   await expectError('direct approved-memory insertion denied', 'insert into public.memories(user_id,content) values ($1,$2)', [A, 'unapproved'], ['42501']);
   await expectError('direct proposal status mutation denied', 'update public.memory_proposals set status = $1 where id = $2', ['accepted', p1], ['42501']);
@@ -71,7 +75,7 @@ try {
   assert.equal(retry.id, saved.id);
   assert.equal((await db.query('select count(*)::int as n from public.memories')).rows[0].n, 1);
   pass('approval retry returns same memory');
-  await expectError('oversized padded approved-memory edit rejected', 'update public.memories set content=$1 where id=$2', ['Hikes.' + ' '.repeat(1000), saved.id], ['23514']);
+  await expectError('oversized padded approved-memory ciphertext rejected', 'update public.memories set content=$1 where id=$2', ['Hikes.' + ' '.repeat(2048), saved.id], ['23514']);
   await expectError('stale assistant context rejected', 'insert into public.messages(user_id,conversation_id,role,content,client_request_id,context_epoch) values ($1,$2,$3,$4,$5,0)', [A, ca, 'assistant', 'old answer', requestId], ['40001']);
   await expectError('duplicate user turn rejected', 'insert into public.messages(user_id,conversation_id,role,content,client_request_id,context_epoch) values ($1,$2,$3,$4,$5,1)', [A, ca, 'user', 'retry', requestId], ['23505']);
   await actor(B);
@@ -149,7 +153,37 @@ try {
   await db.query('select * from public.accept_memory_proposal($1,null,null,1)', [pc]);
   assert((await db.query('select memory_changed_at from public.profiles where id=$1', [A])).rows[0].memory_changed_at);
   pass('memory change records memory_changed_at');
-  await db.query('insert into public.emergency_contacts(user_id,sealed) values ($1,$2)', [A, 'v2.contact']);
+  // Exercise actual encryption expansion, rather than short "v2." placeholders.
+  // Three-byte BMP text is the largest UTF-8 encoding per UTF-16 code unit.
+  const dataKey = randomBytes(32);
+  for (const [label, text] of [['BMP', '界'.repeat(LIMITS.maxMemoryLength)],
+    ['supplementary', '🌻'.repeat(LIMITS.maxMemoryLength / 2)]]) {
+    assert.equal(text.length, LIMITS.maxMemoryLength);
+    const ciphertext = sealText(text, dataKey, A);
+    if (label === 'BMP') assert(ciphertext.length > 1000);
+    const proposal = (await db.query('insert into public.memory_proposals(user_id,conversation_id,suggested_content) values ($1,$2,$3) returning id,suggested_content', [A, cc.id, ciphertext])).rows[0];
+    assert.equal(openText(proposal.suggested_content, dataKey, A), text);
+    const approved = (await db.query('select * from public.accept_memory_proposal($1,$2,null,1)', [proposal.id, sealText(text, dataKey, A)])).rows[0];
+    assert.equal(openText(approved.content, dataKey, A), text);
+    pass('maximum-length ' + label + ' memory survives encrypted proposal and approval');
+  }
+  const unicodeTitle = '界'.repeat(60);
+  const title = (await db.query('update public.conversations set title_sealed=$1 where id=$2 returning title_sealed', [sealText(unicodeTitle, dataKey, A), cc.id])).rows[0];
+  assert.equal(openText(title.title_sealed, dataKey, A), unicodeTitle);
+  pass('maximum-length Unicode title fits encrypted storage');
+  const unicodeMessage = '界'.repeat(LIMITS.maxMessageLength);
+  const currentEpoch = (await db.query('select context_epoch from public.conversations where id=$1', [cc.id])).rows[0].context_epoch;
+  const storedMessage = (await db.query('insert into public.messages(user_id,conversation_id,role,content,client_request_id,context_epoch) values ($1,$2,$3,$4,$5,$6) returning content', [A, cc.id, 'user', sealText(unicodeMessage, dataKey, A), randomUUID(), currentEpoch])).rows[0];
+  assert.equal(openText(storedMessage.content, dataKey, A), unicodeMessage);
+  pass('maximum-length Unicode user message fits encrypted storage');
+  const unicodeAction = `take one step on the plan you mentioned (${'界'.repeat(LIMITS.maxMemoryLength)})`;
+  const storedAction = (await db.query('insert into public.social_actions(user_id,conversation_id,title,description) values ($1,$2,$3,$4) returning description', [A, cc.id, 'Weekly suggestion', sealText(unicodeAction, dataKey, A)])).rows[0];
+  assert.equal(openText(storedAction.description, dataKey, A), unicodeAction);
+  pass('Unicode weekly suggestion fits encrypted storage');
+  const unicodeContact = JSON.stringify({ name: '界'.repeat(80), relationship: '界'.repeat(60), phoneOrEmail: '界'.repeat(120) });
+  const storedContact = (await db.query('insert into public.emergency_contacts(user_id,sealed) values ($1,$2) returning sealed', [A, sealText(unicodeContact, dataKey, A)])).rows[0];
+  assert.equal(openText(storedContact.sealed, dataKey, A), unicodeContact);
+  pass('maximum-length Unicode contact fields fit encrypted storage');
   await expectError('cannot store a contact for another user', 'insert into public.emergency_contacts(user_id,sealed) values ($1,$2)', [B, 'v2.contact'], ['42501']);
   await actor(B);
   assert.equal((await db.query('select * from public.emergency_contacts')).rows.length, 0);
