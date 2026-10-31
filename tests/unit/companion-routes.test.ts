@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { randomBytes, randomUUID } from "node:crypto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -71,11 +71,16 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test-only");
   vi.stubEnv("LLM_ADAPTER", "mock");
   vi.stubEnv("COMPANION_STORAGE", "memory");
+  // The fixture must be self-contained even when a hosting build inherits
+  // NODE_ENV=production. Runtime validation still requires a configured key.
+  vi.stubEnv("CONTACT_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
   delete (globalThis as { __companionStore?: unknown }).__companionStore;
   delete (globalThis as { __anonLimiter?: unknown }).__anonLimiter;
   currentUser = null;
   ageConfirmed = true;
 });
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("companion routes", () => {
   it("require a verified session and a same-origin request", async () => {

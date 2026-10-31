@@ -18,7 +18,7 @@
     "check:env": "node --test scripts/check-development-env.mjs",
     "env:pull": "node scripts/development-env.mjs pull",
     "env:encrypt": "node scripts/development-env.mjs encrypt",
-    "check:schema": "node scripts/check-schema.mjs",
+    "check:schema": "node --experimental-default-type=module --experimental-strip-types scripts/check-schema.mjs",
     "verify:auth": "node scripts/verify-auth-live.mjs",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run check:contracts && npm run check:runtime && npm run check:voice && npm run check:tavus && npm run check:env && npm run check:schema",
     "format:check": "prettier --check src/lib/companion tests e2e evals/run.ts evals/data playwright.config.ts vitest.config.mts",

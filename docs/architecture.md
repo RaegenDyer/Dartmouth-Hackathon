@@ -1,8 +1,10 @@
 # Architecture
 
-Status: preparation baseline, October 30, 2026. Decisions below are proposed
-defaults for team review. The starter runs, but product features are not yet
-implemented and the SQL migration has not been applied.
+Status: merged chat/persistence baseline, October 31, 2026. Anonymous auth, chat,
+approval-first memories, and Supabase repositories exist; see README for tested
+scope. The collaborator recorded two applied migrations. The additive Unicode
+ciphertext-capacity migration is pending. Future streaming and shared atomicity
+requirements below remain work for review and implementation.
 
 ## Product boundary
 

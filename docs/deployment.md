@@ -1,26 +1,30 @@
 # Vercel hosting preparation
 
-Status, October 30, 2026: prepared; no deployment verified yet. The foundation is
-on `main`. The first deployment serves the preparation page and `/api/health`;
-authentication, chat, and saved-data features are still implementation work.
-The account check found the `raegendyer` Hobby team and no Vercel projects. The
-owner has made the GitHub repository public, and unauthenticated access has been
-verified. Import and GitHub App authorization remain.
+Status, October 31, 2026: project `candid-dartmouth` created in `raegendyer` and
+connected to `RaegenDyer/Dartmouth-Hackathon`, production branch `main`. Next.js,
+Node 22, locked installation, and the checked build command are configured.
+The owner authorized the GitHub integration. Hosting was verified live at
+https://candid-dartmouth.vercel.app on October 31, 2026, application commit
+`a571b39969b5ad469086e95d3636350829142a92` (Vercel Ready, page/health HTTP 200).
+The unconfigured session route returns a safe 503 as expected.
+Chat, anonymous auth, and encrypted Supabase persistence now exist in the app.
+With blank app settings the first deployment shows setup instructions and health;
+configured chat requires the established encryption key and runtime settings below.
 
 ## First deployment: steps in your accounts
 
-1. Open [Vercel New Project](https://vercel.com/new), sign in, and choose the
-   intended account/team. Import `RaegenDyer/Dartmouth-Hackathon` from GitHub.
-2. If the repository is missing, configure the Vercel GitHub App and grant it
-   access to this repository. This account authorization is separate from the
-   GitHub token in the local credential file.
+1. Open the existing [candid-dartmouth project](https://vercel.com/raegendyer/candid-dartmouth).
+   Do not create a second project for this repository.
+2. Settings -> Git should show `RaegenDyer/Dartmouth-Hackathon`. The owner
+   completed the GitHub App authorization, which is separate from the local
+   GitHub management token.
 3. Confirm the settings below. The repository's `vercel.json` supplies the
    framework, install command, and build command. Keep the output directory at
    the framework default.
-4. Leave application environment variables empty for this first foundation
-   deployment. This page and health endpoint do not call Anthropic or Supabase.
-   Applying the draft database migration is not needed to verify hosting.
-5. Click **Deploy**, wait for Ready, and open the production domain Vercel assigns.
+4. Leave application settings empty for the first hosting verification. This
+   shows setup instructions and keeps health credential-free. It does not enable
+   working chat. No database changes are needed to verify this setup deployment.
+5. Deploy the reviewed `main`, wait for Ready, and open the assigned domain.
    In Project Settings -> Environments -> Production -> Branch Tracking, confirm
    `main` is the production branch.
 6. Verify the page and health endpoint using the checks below, then record the
@@ -52,7 +56,8 @@ the plan requirements before relying on collaborator deployments.
 
 ## Verify the hosted foundation
 
-1. Open the production domain and confirm the preparation page loads.
+1. Open the production domain and confirm the setup instructions load, or the
+   chat screen if all runtime settings have deliberately been supplied.
 2. Open `/api/health` on that same domain. Expect HTTP 200 and:
 
    ```json
@@ -70,7 +75,18 @@ Passing these checks verifies hosting and liveness, not a working AI product or
 live provider/database connectivity. No custom domain or additional service is
 needed for this first deployment.
 
-## Add application settings when integrations are implemented
+## Enable configured chat after hosting verification
+
+1. Recover the **existing** `CONTACT_ENCRYPTION_KEY` from the collaborator's
+   configured environment and save it in ignored `.env.local`. Do not send its
+   value in chat or generate a replacement for the shared database: stored text
+   is encrypted under that key, and a different key cannot read it.
+2. Apply the reviewed additive migration
+   `supabase/migrations/202610310002_ciphertext_capacity.sql` using the team's
+   database workflow. The earlier two migrations were recorded as applied by
+   Neeraj; this new Unicode-capacity migration has not been applied by this pass.
+3. Add the runtime settings below and redeploy. Use `LLM_ADAPTER=mock` until a
+   model and shared usage limits are chosen; optional voice flags stay false.
 
 In Project Settings -> Environment Variables, add the values for the intended
 Production and/or Preview environment, then redeploy. GitHub Actions secrets are
@@ -86,6 +102,9 @@ stay out of Vercel source uploads.
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe `sb_publishable_` key; legacy `anon` JWT supported |
 | `ANTHROPIC_API_KEY` | Server-only app key, stored as a sensitive environment variable |
 | `ANTHROPIC_MODEL` | Model ID available to the configured Anthropic workspace |
+| `LLM_ADAPTER` | `mock` initially; `anthropic` enables funded model requests |
+| `CONTACT_ENCRYPTION_KEY` | Required for production companion requests, including mock mode; established 32-byte base64 data key |
+| `COMPANION_STORAGE` | `supabase` for persistent deployment; process memory is for tests |
 | `VOICE_INPUT_ENABLED` | Optional server flag; leave `false` while live voice is unimplemented |
 | `DEEPGRAM_API_KEY` | Optional server-only Deepgram key; never a public variable |
 | `TAVUS_AUDIO_ENABLED` | Independent optional server flag; keep `false` during preparation |
@@ -106,11 +125,18 @@ configuration fails before bundling. Never add `GITHUB_TOKEN`, `VERCEL_TOKEN`,
 settings. The local `credentials.env` is management access and stays uncommitted.
 See [Vercel environment variables](https://vercel.com/docs/environment-variables).
 
-When authentication is implemented, configure Supabase's Site URL and redirect
-allowlist using the actual hosted domain and implemented callback routes. No
-callback route or auth flow exists yet; do not invent one during hosting setup.
+Anonymous authentication is implemented. When permanent login or callback flows
+are added, use the actual hosted domain in Supabase's Site URL and redirect
+allowlist. Do not invent callback routes during this hosting verification.
+Rate limits, turn deduplication, and inactivity tracking still use process memory;
+the shared serverless implementation remains work before a wider pilot.
 
 ## Failed builds and recovery
+
+The first Vercel attempt exposed a route-test fixture that relied on a
+nonproduction environment. The fixture now supplies and restores its own random
+test encryption key, so `npm run check` works with `NODE_ENV=production` without
+any runtime secrets. This does not configure or weaken the deployed data key.
 
 1. Open the failed deployment's build logs and identify the first failing step.
    Check Node 22, the repository root, and the exact environment-variable names.
