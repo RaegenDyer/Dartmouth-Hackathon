@@ -3,32 +3,46 @@
 Status: design exploration before application styling. Product features, brand,
 and visual direction remain open. No concept board is an approved specification.
 
-## Required checkpoint before frontend creation
+## Required design workflow before frontend implementation
 
 **Checkpoint status: PENDING. No visual direction is approved.**
 
-The project owner asked that this style conversation come up again before any
-collaborator or AI agent creates the frontend design. Before creating user-facing
-screens, layouts, visual components, or styling:
+When frontend work is about to begin, the agent must bring up the style
+discussion with the collaborator requesting or leading that work. **Any project
+collaborator can make the design decision; approval from the original project
+owner is not required.**
 
-1. Revisit the three generated concepts below and the raster icon study with the
-   project owner. Summarize their differences and keep feature content mutable.
-2. Ask whether to select one, combine/refine them, explore a new direction, or
-   explicitly waive this checkpoint for a stated scope.
-3. Wait for the owner's decision, then record it with its scope and date below
-   and update the checkpoint in the root README before implementing the design.
+1. Discuss the intended screens, mood, and current scope with that collaborator.
+   Revisit the three generated concepts below and the raster icon study, keeping
+   feature content mutable.
+2. Use the image-generation model to design app mockups and visual directions
+   informed by compatible references from [the 100 design masters](design-masters.md).
+   This requirement covers the app screens and layouts as well as custom icons.
+   Existing generated concepts can be selected when they fit; use image
+   generation for refinements, combinations, or new directions the collaborator
+   wants to explore. Save new outputs and their prompts in this directory.
+3. Present the generated designs and have that collaborator choose the direction
+   for the agreed scope. An agent must not silently choose a style and implement
+   it directly in code. Its recommendation alone is not a decision.
+4. Record the deciding collaborator, generated concept(s), decision, scope, and
+   date below, and update the root README checkpoint before implementing
+   frontend screens, layouts, visual components, or styling.
 
-An assistant's recommendation of Warm editorial does not constitute approval.
-Backend and nonvisual preparation may continue while the checkpoint is pending.
-A recorded decision satisfies the checkpoint for its scope; repeat the discussion
-only if a later task changes that direction or the owner requests it.
+Backend and nonvisual preparation may continue while frontend implementation
+awaits a collaborator's decision. A recorded decision satisfies the checkpoint
+for its scope; repeat the discussion when a later task changes that direction
+or the collaborator requests it. Implement the selected design with accessible
+HTML/CSS and real controls; image generation supplies the visual design and
+raster artwork.
 
-### Owner decision record
+### Collaborator design decision record
 
 | Field | Current value |
 | --- | --- |
 | Status | Pending |
-| Owner selection / revised direction / waiver | Not yet recorded |
+| Deciding collaborator | Not yet recorded |
+| Selected generated concept(s) | Not yet recorded |
+| Design decision / refinements | Not yet recorded |
 | Approved scope | None |
 | Decision date | Not yet recorded |
 

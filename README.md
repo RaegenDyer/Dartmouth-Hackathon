@@ -12,12 +12,15 @@ feature sketches, database draft, API contracts, and backlog as proposals, not
 approved requirements. Do not implement an entire proposed feature list merely
 because it appears in the documentation.
 
-**Frontend style checkpoint: PENDING.** Before any collaborator or AI agent
-creates user-facing frontend screens, layouts, components, or styling, reopen the
-style conversation with the project owner and revisit the
-[generated concepts and icon study](docs/design/README.md). No direction has been
-approved. Record the owner's selection, revised direction, or explicit waiver
-there before proceeding; an assistant recommendation is not a decision.
+**Frontend style checkpoint: PENDING.** Before implementing frontend screens,
+layouts, components, or styling, discuss the design with the collaborator
+requesting or leading that work. Any project collaborator can decide; the
+original project owner's approval is not required. Use the image-generation
+model to design app mockups informed by the [100 design masters](docs/design/design-masters.md),
+revisit the [generated concepts and icon study](docs/design/README.md), and
+generate refinements or new directions as needed. Record that collaborator's
+selection and scope there before implementation. An agent must not silently
+choose and code its own style. No direction has been selected yet.
 
 | Area | Actual progress | Still needed |
 | --- | --- | --- |
@@ -28,7 +31,7 @@ there before proceeding; an assistant recommendation is not a decision.
 | Vercel | Hosting choice settled and API token verified. | Create the hosting project, set application environment variables, and deploy; no deployment has been performed |
 | GitHub | Repository access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, environment validation, and provider factories are written. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
-| Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Mandatory owner style discussion before frontend creation; checkpoint is pending; mockup features remain mutable |
+| Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
 
 The model client factory does not implement chat. The Supabase factories do not
 implement authentication. A migration file does not mean the hosted database has

@@ -18,7 +18,7 @@ text flow before adding dictation or additional conversation scenarios.
 | --- | --- | --- |
 | 1 | Identity and database | Team chooses demo/participant login; implement refresh/sign-out; review and apply migration to a designated dev project; user A cannot read/write/reference user B's records |
 | 2 | Chat service | Add atomic turn reservation and shared rate/token limits; implement authenticated stream with a configurable model and current context; duplicate submissions make one model call; timeout/cancel leaves a recoverable state |
-| 3 | Interface | Complete the owner style checkpoint in docs/design/README.md before frontend creation; then implement the chosen interface scope with clear failure/retry states and no provider keys in browser code |
+| 3 | Interface | Discuss image-generated app designs informed by the 100 design masters with the collaborator leading frontend work; record their decision in docs/design/README.md before implementation; then build the selected scope with clear failure/retry states and no provider keys in browser code |
 | 4 | Memory | Suggestion is visible as pending; user reviews exact text and expiry; approve/edit/delete work; expiry/reset and edits during streaming cannot silently reuse old context |
 | 5 | Social action | One relevant proposal; explicit accept/dismiss; accepted action can be completed; illegal state transitions fail |
 | 6 | Boundaries and data controls | Reviewed handoff/resources, no diagnosis/reliable-detection claims, account/history deletion, chosen retention rules, no raw personal content in operational logs |

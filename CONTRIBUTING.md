@@ -2,19 +2,27 @@
 
 ## Before frontend work
 
-The project owner explicitly requested that the style conversation be reopened
-before anyone creates the app's frontend design. **The style checkpoint is
-currently pending.** Read [the concept gallery and decision record](docs/design/README.md)
-and revisit Warm editorial, Playful civic, Evening room, and the generated raster
-icon study with the owner before creating user-facing screens, layouts, visual
-components, or styling.
+**The style checkpoint is currently pending.** When frontend work is about to
+begin, the agent must bring up the style discussion with the collaborator
+requesting or leading that work. Any project collaborator may choose the
+direction; approval from the original project owner is not required.
 
-Do not assume a mockup, an assistant's preference, or a general feature request
-approves a visual direction. Ask for the owner's selection, revised direction,
-or explicit waiver and record its scope and date in the design decision record.
-If that decision is unavailable, keep frontend design paused; backend and
-nonvisual preparation can continue. Once the decision is recorded, it covers the
-agreed scope without repeating this discussion for every component.
+Read [the concept gallery and decision record](docs/design/README.md) and
+[the 100 design masters](docs/design/design-masters.md). Use the image-generation
+model to design app mockups and visual directions based on compatible references
+from that catalog. Revisit Warm editorial, Playful civic, Evening room, and the
+raster icon study with the collaborator; use image generation to refine those
+options or explore another direction when needed. The collaborator can choose
+an existing generated concept if it suits the current scope.
+
+Have that collaborator decide on the generated design before implementing
+user-facing screens, layouts, visual components, or styling. Do not silently
+invent and code a style or treat a general feature request as a style decision.
+Record who decided, the selected generated concept(s), decision, scope, and date
+in the design record, and update the root README checkpoint. If their decision
+is unavailable, pause frontend implementation; backend and nonvisual preparation
+can continue. A recorded decision covers the agreed scope without repeating the
+discussion for every component.
 
 When reviewing a frontend change, link its recorded style decision and surface a
 missing decision before merging. This is a contributor/agent instruction and
@@ -92,5 +100,5 @@ Explain the user-visible behavior, the API/schema changes, and how you verified
 it. In particular, check that one user's IDs cannot expose another user's data,
 that expired/unapproved memories cannot enter model context, and that failures
 do not leave the UI claiming an action or memory was saved when it was not.
-For frontend work, also verify that the owner style checkpoint was completed for
-the change's scope and link the decision in the review description.
+For frontend work, also verify that the collaborator chose an image-generated
+design for the change's scope and link the decision in the review description.
