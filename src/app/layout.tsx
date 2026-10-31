@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Dartmouth Hackathon | Foundation",
-  description: "Development foundation for the Dartmouth AI hackathon project.",
+  title: "Companion",
+  description: "A nonclinical AI companion for settling into a new place.",
   robots: { index: false, follow: false },
 };
 

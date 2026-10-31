@@ -12,33 +12,30 @@ feature sketches, database draft, API contracts, and backlog as proposals, not
 approved requirements. Do not implement an entire proposed feature list merely
 because it appears in the documentation.
 
-**Frontend style checkpoint: PENDING.** Before implementing frontend screens,
-layouts, components, or styling, discuss the design with the collaborator
-requesting or leading that work. Any project collaborator can decide; the
-original project owner's approval is not required. Use the image-generation
-model to design app mockups informed by the [100 design masters](docs/design/design-masters.md),
-revisit the [generated concepts and icon study](docs/design/README.md), and
-generate refinements or new directions as needed. Record that collaborator's
-selection and scope there before implementation. An agent must not silently
-choose and code its own style. No direction has been selected yet.
+**Frontend style checkpoint: DECIDED for the chat screen.** On October 31, 2026,
+Neeraj Kumar selected generated concept [01 / Warm editorial](docs/design/concepts/01-warm-editorial.png)
+for the chat-screen scope. The [design decision record](docs/design/README.md#collaborator-design-decision-record)
+lists exactly what is in scope. Other screens still require the collaborator
+style discussion, image-generated mockups informed by the
+[100 design masters](docs/design/design-masters.md), and a recorded decision.
 
 | Area | Actual progress | Still needed |
 | --- | --- | --- |
-| Application framework | Next.js/React/TypeScript starter runs without credentials. `/` is a preparation page; `GET /api/health` is the only implemented API route. | Product interface and application endpoints |
+| Application framework | Next.js/React/TypeScript app. `/` is the chat screen (direction 01 / Warm editorial): anonymous session start, conversation, message composer, crisis-resource view, memory suggestions to save/edit/dismiss, saved memories to delete, and sign-out. Without Supabase settings it shows setup instructions; health still runs credential-free. | Conversations/Saved/Settings screens; streaming replies; raster icons |
 | Anthropic | Credentials verified with a successful live text request. Server-only SDK client factory exists. | Connect the app to a model request/response flow; choose model and usage limits |
-| Supabase | Project access, a read-only SQL query, and authentication-configuration access verified. Browser/server client factories exist. Auth plumbing: session-refresh Proxy (`src/proxy.ts`), `getClaims()`-verified actor helper (`requireSession` in `src/lib/auth/server.ts`), same-origin mutation guard, `GET /api/auth/session`, and `POST /api/auth/sign-out`; unit-tested with a mocked client and smoke-tested without credentials. | Choose the sign-in method (anonymous vs. permanent accounts) and build sign-in/callback; verify against the hosted project; login UI waits on the design checkpoint; user-scoped repositories and an applied schema |
+| Supabase | Project access, a read-only SQL query, and authentication-configuration access verified. Browser/server client factories exist. Auth plumbing: session-refresh Proxy (`src/proxy.ts`), `getClaims()`-verified actor helper (`requireSession` in `src/lib/auth/server.ts`), same-origin mutation guard, `GET /api/auth/session`, `POST /api/auth/anonymous` (chosen local-testing sign-in, Oct 31), and `POST /api/auth/sign-out`; unit-tested with a mocked client and smoke-tested without credentials. | Turn on anonymous sign-ins and run `npm run verify:auth` against the hosted project; decide on permanent accounts for multi-day evaluation; Supabase-backed repositories and an applied schema |
 | Data model | Draft migration for profiles, conversations, messages, memory proposals, memories, and social actions; 37 isolated PostgreSQL behavior checks pass, including expiry and input-bound regressions. | Revise tables to match chosen features; verify real Supabase Auth/Data API behavior and concurrency before application |
 | Vercel | Account access verified; `vercel.json` configures Next.js, locked installation with build tools, and checks before building. [Deployment guide](docs/deployment.md) prepared. | Import the GitHub repository and create the project; initial foundation needs no app variables; no deployment has been performed |
 | GitHub | Public repository on `main`; access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
-| Companion core (milestone 1, step 1) | Server-side modules in `src/lib/companion`: `respond()` conversation service, safety pre/post checks and crisis view, memory store and fact-only capture, code-enforced memory disclosure, weekly social-action scheduler, boundary rules (AI status, only-connection, dependence, prompt reveal), rate limiter, encrypted emergency contact, account-data deletion. Mocked and Anthropic LLM adapters. In-memory repositories. Vitest unit tests and a deterministic eval suite (`evals/`). See the [milestone report](docs/milestone-1-report.md). | Supabase-backed repositories, auth, route handlers, chat UI, and memory panel. The `eval-llm` run has not been executed yet. |
+| Companion core (milestone 1, step 1) | Server-side modules in `src/lib/companion`: `respond()` conversation service, safety pre/post checks and crisis view, memory store and fact-only capture as **proposals that the user approves** (nothing is saved automatically), code-enforced memory disclosure, weekly social-action scheduler, boundary rules (AI status, only-connection, dependence, prompt reveal), rate limiter, encrypted emergency contact, account-data deletion. Mocked and Anthropic LLM adapters. In-memory repositories. Authenticated route handlers for conversations, chat, memory proposals, and memories, backed by **process memory (local testing only; cleared on restart)**. Vitest unit/route tests and a deterministic eval suite (`evals/`). See the [milestone report](docs/milestone-1-report.md). | Supabase-backed repositories (required before any deployment), SSE streaming, version checks. The `eval-llm` run has not been executed yet. |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, validated runtime/build configuration, and provider factories; contract and configuration regression checks. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
 | Optional voice input | [Vapi architecture](docs/voice.md), session/provider interfaces, user-transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default. | Assistant/account setup, verified-user session bootstrap, actual SDK transport, no-spoken-reply/cost validation, and browser/device checks; no microphone or calls run yet |
-| Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
+| Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Chat screen decided (01 / Warm editorial, Oct 31); other screens still need the collaborator design discussion; production raster icons still need generating |
 
-The model client factory does not implement chat. Auth verifies and signs out
-existing sessions, but no sign-in method exists yet. A migration file does not mean the hosted database has
-that schema. Only the preparation page and liveness route currently run in the
-application; normal startup makes no Anthropic or Supabase calls.
+Chat works end to end locally, but conversations and memories live in server
+memory and vanish on restart; it is not ready to deploy. A migration file does not
+mean the hosted database has that schema. Anthropic is called only when
+`LLM_ADAPTER=anthropic`; otherwise replies come from the deterministic mock.
 
 ### Verified baseline
 
@@ -140,13 +137,21 @@ npm run eval:fast    # deterministic evals with the mocked LLM; writes evals/rep
 npm run eval:llm     # LLM-judged evals; needs ANTHROPIC_API_KEY and ANTHROPIC_MODEL
 ```
 
-Companion settings in `.env.example`: `LLM_ADAPTER` (`mock` by default, or
-`anthropic`) and `CONTACT_ENCRYPTION_KEY` (32 random bytes, base64) for
-emergency contacts at rest.
+### Test the chat locally
 
-The default preparation page does not contact Supabase or Anthropic. Feature
-developers can copy `.env.example` to `.env.local` and fill in application
-settings when working on those integrations. See [contributor setup](CONTRIBUTING.md).
+1. `cp .env.example .env.local` (ignored by Git) and fill in:
+   - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from the
+     Supabase dashboard (Project Settings > API Keys; use the `sb_publishable_` key).
+   - For real Claude replies: `LLM_ADAPTER=anthropic`, `ANTHROPIC_API_KEY`, and
+     `ANTHROPIC_MODEL` (for example `claude-sonnet-5-5`). Leave `LLM_ADAPTER=mock`
+     to test without a key. The Anthropic endpoint URL is fixed in code on purpose.
+2. In Supabase, turn on Authentication > Sign In / Providers > Anonymous sign-ins.
+3. `npm run dev`, open http://localhost:3000, and choose **Start a private session**.
+4. Optional: `npm run verify:auth` runs the live session/refresh/sign-out checks.
+
+`CONTACT_ENCRYPTION_KEY` (32 random bytes, base64) encrypts emergency contacts; a
+random per-process key is used when it is blank. Restart `npm run dev` after
+changing `.env.local`. See [contributor setup](CONTRIBUTING.md).
 
 ## Shared architecture
 

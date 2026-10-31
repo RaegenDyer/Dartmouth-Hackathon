@@ -2,22 +2,17 @@
 // real Supabase project. Not part of CI. Never prints tokens or passwords.
 //
 //   1. .env.local: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-//   2. .env.test.local: TEST_USER_EMAIL and TEST_USER_PASSWORD (a test user)
+//   2. Supabase dashboard: Authentication > Sign In / Providers > Anonymous sign-ins on
 //   3. npm run dev   (in another terminal)
 //   4. npm run verify:auth            (BASE_URL defaults to http://localhost:3000)
 import { createServerClient } from "@supabase/ssr";
 import { existsSync } from "node:fs";
 
-for (const file of [".env.local", ".env.test.local"]) {
+for (const file of [".env.local"]) {
   if (existsSync(file)) process.loadEnvFile(file);
 }
 const base = process.env.BASE_URL ?? "http://localhost:3000";
-const required = [
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-  "TEST_USER_EMAIL",
-  "TEST_USER_PASSWORD",
-];
+const required = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"];
 const missing = required.filter((name) => !process.env[name]?.trim());
 if (missing.length) {
   console.error(`Missing settings: ${missing.join(", ")}`);
@@ -81,31 +76,26 @@ try {
   check("session response is not cacheable", response.headers.get("cache-control") === "no-store");
 }
 
-// 2. Sign in as the test user (outside the app; the app has no sign-in route yet).
+// 2. Start an anonymous session through the app, as the browser does.
 const jar = new Map();
+let expectedUserId;
+{
+  const response = await fetch(`${base}/api/auth/anonymous`, {
+    method: "POST",
+    headers: { origin: new URL(base).origin },
+  });
+  absorbSetCookies(jar, response);
+  const body = await response.json().catch(() => ({}));
+  check("app starts an anonymous session", response.status === 200 && body.isAnonymous === true,
+    `status ${response.status}${body.error ? `: ${body.error.message}` : ""}`);
+  if (response.status !== 200) process.exit(1);
+  expectedUserId = body.userId;
+}
 const supabase = createServerClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-  {
-    cookies: {
-      getAll: () => [...jar].map(([name, value]) => ({ name, value })),
-      setAll: (updates) => {
-        for (const { name, value } of updates) {
-          if (value) jar.set(name, value);
-          else jar.delete(name);
-        }
-      },
-    },
-  },
+  { cookies: { getAll: () => [], setAll: () => {} } },
 );
-const { data: signIn, error: signInError } = await supabase.auth.signInWithPassword({
-  email: process.env.TEST_USER_EMAIL,
-  password: process.env.TEST_USER_PASSWORD,
-});
-check("test user signs in with Supabase", !signInError && Boolean(signIn?.user),
-  signInError ? `${signInError.status ?? ""} ${signInError.code ?? signInError.message}` : "");
-if (signInError) process.exit(1);
-const expectedUserId = signIn.user.id;
 
 // 3. Signed in.
 {
@@ -113,7 +103,7 @@ const expectedUserId = signIn.user.id;
   const body = await response.json();
   check("app verifies the session cookie", body.authenticated === true && body.userId === expectedUserId,
     `status ${response.status}`);
-  check("isAnonymous is false for a password user", body.isAnonymous === false);
+  check("session is marked anonymous", body.isAnonymous === true);
 }
 
 // 4. Forged token: corrupt the JWT signature and keep everything else.

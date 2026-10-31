@@ -1,7 +1,8 @@
 # API contracts
 
-These are proposed contracts for implementation. Only `GET /api/health`,
-`GET /api/auth/session`, and `POST /api/auth/sign-out` exist.
+These are proposed contracts for implementation. Routes marked "Local" exist
+today but store data in server process memory (cleared on restart) and differ
+from the proposal as noted; they are for local testing, not deployment.
 All other routes below are intentionally absent until their authorization,
 business logic, persistence, and tests are ready. Shared request/event schemas
 are in `src/lib/contracts/index.ts`.
@@ -33,17 +34,18 @@ are in `src/lib/contracts/index.ts`.
 | `GET /api/health` | `{status:"ok",service:"dartmouth-hackathon",stage:"foundation"}` | Implemented; public liveness only |
 | `GET /api/auth/session` | `{authenticated:false}` or `{authenticated:true,userId,isAnonymous}` from verified claims; 503 if Supabase is not configured | Implemented |
 | `POST /api/auth/sign-out` | Same-origin only (403 otherwise); ends this browser's session; 204 | Implemented |
+| `POST /api/auth/anonymous` | Same-origin; starts (or returns) an anonymous session; 503 if anonymous sign-in is off | Implemented |
 | `GET /api/profile` | Current actor's profile and version | Planned |
 | `PATCH /api/profile` | `updateProfileSchema`; saved profile | Planned |
-| `POST /api/conversations` | `createConversationSchema`; conversation ID and version | Planned |
+| `POST /api/conversations` | `createConversationSchema`; `{conversationId}` (no version yet) | Local |
 | `GET /api/conversations/:id/messages` | Cursor-paginated visible history | Planned |
-| `POST /api/chat` | `sendMessageSchema`; SSE stream | Planned |
-| `GET /api/memory-proposals` | Pending proposals owned by actor | Planned |
-| `POST /api/memory-proposals/:id/accept` | `approveMemorySchema`; approved memory and context revision | Planned |
-| `POST /api/memory-proposals/:id/dismiss` | `dismissProposalSchema`; decision result | Planned |
-| `GET /api/memories` | Approved, unexpired memories and versions | Planned |
+| `POST /api/chat` | `sendMessageSchema`; one JSON reply `{reply,route,safetyTriggered,crisis,memoriesUsed,memoryProposals,socialAction}` instead of SSE; repeated `clientRequestId` returns the same turn | Local |
+| `GET /api/memory-proposals` | Pending proposals owned by actor | Local |
+| `POST /api/memory-proposals/:id/accept` | `{content, expiresAt}` (no `expectedVersion` yet); approved memory | Local |
+| `POST /api/memory-proposals/:id/dismiss` | No body yet; 204 | Local |
+| `GET /api/memories` | Approved, unexpired memories (no versions yet) | Local |
 | `PATCH /api/memories/:id` | `updateMemorySchema`; saved memory and context revision | Planned |
-| `DELETE /api/memories/:id` | `deleteMemorySchema`; result/context revision | Planned |
+| `DELETE /api/memories/:id` | No body yet; 204 | Local |
 | `GET /api/social-actions` | Actor's proposals and accepted/completed actions | Planned |
 | `PATCH /api/social-actions/:id` | `updateSocialActionSchema`; saved action | Planned |
 

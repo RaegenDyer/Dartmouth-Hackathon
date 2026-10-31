@@ -3,6 +3,7 @@ import type { ApiErrorCode } from "@/lib/contracts";
 import { publicEnvironmentSchema } from "@/lib/env/public";
 import { createRouteSupabaseClient } from "@/lib/supabase/server";
 import { sessionFromVerifiedClaims, type VerifiedSession } from "./actor";
+import { isSameOriginRequest } from "./origin";
 
 export const privateHeaders = { "Cache-Control": "no-store" } as const;
 
@@ -45,4 +46,12 @@ export async function requireSession(): Promise<
     return { response: apiError(401, "UNAUTHENTICATED", "Please sign in to continue.") };
   }
   return { session: result.session, supabase: result.supabase };
+}
+
+// For cookie-authenticated mutations: same-origin check, then requireSession().
+export async function requireMutationSession(request: Request) {
+  if (!isSameOriginRequest(request)) {
+    return { response: apiError(403, "INVALID_REQUEST", "This request was not allowed.") };
+  }
+  return requireSession();
 }

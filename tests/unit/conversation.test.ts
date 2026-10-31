@@ -10,6 +10,7 @@ import {
   type LlmAdapter,
 } from "@/lib/companion/llm/adapter";
 import { LIMITS } from "@/lib/companion/limits";
+import { approveProposal, dismissProposal } from "@/lib/companion/memory/proposals";
 import { createMessageRateLimiter } from "@/lib/companion/rate-limit";
 
 const fixed = (text: string, memoriesUsed: string[] = []): LlmAdapter => ({
@@ -20,6 +21,13 @@ async function setup(llm?: LlmAdapter) {
   const app = createInMemoryCompanion({ llm });
   const session = await app.deps.sessions.create("u1", new Date());
   return { app, session };
+}
+
+/** Approves the first pending suggestion unchanged, as a user would. */
+async function approveFirst(app: Awaited<ReturnType<typeof setup>>["app"], userId = "u1") {
+  const [proposal] = await app.deps.proposals.listPending(userId);
+  if (!proposal) throw new Error("expected a pending proposal");
+  return approveProposal(app.deps, userId, proposal.id, { text: proposal.text, expiresAt: null }, new Date());
 }
 
 describe("respond()", () => {
@@ -60,6 +68,7 @@ describe("respond()", () => {
     const stored = await app.deps.messages.listForSession(session.id);
     expect(stored.some((m) => m.text.includes("Hanover"))).toBe(false);
     expect(await app.deps.memories.list("u1")).toEqual([]);
+    expect(await app.deps.proposals.listPending("u1")).toEqual([]);
     // The normal conversation stays ended for this session.
     expect((await app.respond(session.id, "ok what's the weather")).safety_triggered).toBe(true);
   });
@@ -91,7 +100,7 @@ describe("respond()", () => {
   it("names every memory it uses and forgets deleted memories immediately", async () => {
     const { app, session } = await setup();
     await app.respond(session.id, "My roommate is hard to live with.");
-    const [roommate] = await app.deps.memories.list("u1");
+    const roommate = await approveFirst(app);
     expect(roommate?.text).toBe("Your roommate is hard to live with.");
 
     const used = await app.respond(session.id, "Any tips for my roommate?");
@@ -116,10 +125,63 @@ describe("respond()", () => {
     const app = createInMemoryCompanion({ llm: spy, now: () => new Date((clock += 1000)) });
     const session = await app.deps.sessions.create("u1", new Date());
     await app.respond(session.id, "My roommate is hard to live with.");
-    const [memory] = await app.deps.memories.list("u1");
+    const memory = await approveFirst(app);
     await app.deps.memories.delete("u1", memory?.id as string);
     await app.respond(session.id, "hello");
     expect(seen.at(-1)?.join(" ")).not.toMatch(/roommate/);
+  });
+
+  it("proposes memories but saves nothing until the user approves", async () => {
+    const { app, session } = await setup();
+    const result = await app.respond(session.id, "I live in Hanover. I like bouldering.");
+    expect(result.memory_proposals.map((proposal) => proposal.text)).toEqual([
+      "You live in Hanover.",
+      "You like bouldering.",
+    ]);
+    expect(await app.deps.memories.list("u1")).toEqual([]);
+
+    // Pending suggestions never reach the model.
+    const seen: number[] = [];
+    app.deps.llm = {
+      generate: async (request) => (seen.push(request.memories.length), { text: "ok", memoriesUsed: [] }),
+    };
+    await app.respond(session.id, "hello");
+    expect(seen).toEqual([0]);
+
+    // Repeating a fact does not create a duplicate suggestion.
+    expect((await app.respond(session.id, "I live in Hanover.")).memory_proposals).toEqual([]);
+  });
+
+  it("saves the user's edited text and discards dismissed suggestions", async () => {
+    const { app, session } = await setup();
+    const {
+      memory_proposals: [hanover, climbing],
+    } = await app.respond(session.id, "I live in Hanover. I like bouldering.");
+    const saved = await approveProposal(
+      app.deps,
+      "u1",
+      hanover?.id as string,
+      { text: "You live near Hanover.", expiresAt: null },
+      new Date(),
+    );
+    expect(saved.text).toBe("You live near Hanover.");
+    await dismissProposal(app.deps, "u1", climbing?.id as string);
+    expect((await app.deps.memories.list("u1")).map((memory) => memory.text)).toEqual(["You live near Hanover."]);
+    expect(await app.deps.proposals.listPending("u1")).toEqual([]);
+    await expect(dismissProposal(app.deps, "u1", climbing?.id as string)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("does not let one user approve or dismiss another user's suggestion", async () => {
+    const { app, session } = await setup();
+    const {
+      memory_proposals: [proposal],
+    } = await app.respond(session.id, "I live in Hanover.");
+    const id = proposal?.id as string;
+    await expect(
+      approveProposal(app.deps, "u2", id, { text: "stolen", expiresAt: null }, new Date()),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(dismissProposal(app.deps, "u2", id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(await app.deps.proposals.listPending("u1")).toHaveLength(1);
   });
 
   it("enforces the maximum message length", async () => {
@@ -170,10 +232,12 @@ describe("account deletion", () => {
   it("removes messages, memories, social actions, sessions, and contact", async () => {
     const { app, session } = await setup();
     await app.deps.contacts.save("u1", { name: "Ana", relationship: null, phoneOrEmail: null });
-    await app.respond(session.id, "I live in Hanover.");
+    await app.respond(session.id, "I live in Hanover. I like bouldering.");
+    await approveFirst(app);
     await deleteAccountData(app.deps, "u1");
     expect(app.deps.messages.allForUser("u1")).toEqual([]);
     expect(await app.deps.memories.list("u1")).toEqual([]);
+    expect(await app.deps.proposals.listPending("u1")).toEqual([]);
     expect(await app.deps.contacts.getForCrisisView("u1")).toBeNull();
     expect(await app.deps.socialActions.lastSuggestedAt("u1")).toBeNull();
     expect(await app.deps.sessions.listForUser("u1")).toEqual([]);

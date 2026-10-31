@@ -5,7 +5,7 @@ and visual direction remain open. No concept board is an approved specification.
 
 ## Required design workflow before frontend implementation
 
-**Checkpoint status: PENDING. No visual direction is approved.**
+**Checkpoint status: DECIDED for the chat-screen scope below (October 31, 2026).**
 
 When frontend work is about to begin, the agent must bring up the style
 discussion with the collaborator requesting or leading that work. **Any project
@@ -39,12 +39,12 @@ raster artwork.
 
 | Field | Current value |
 | --- | --- |
-| Status | Pending |
-| Deciding collaborator | Not yet recorded |
-| Selected generated concept(s) | Not yet recorded |
-| Design decision / refinements | Not yet recorded |
-| Approved scope | None |
-| Decision date | Not yet recorded |
+| Status | Decided (scoped) |
+| Deciding collaborator | Neeraj Kumar |
+| Selected generated concept(s) | [01 / Warm editorial](concepts/01-warm-editorial.png) |
+| Design decision / refinements | Use the warm editorial palette and hierarchy: ivory surfaces, forest-green primary action, sage user bubbles, warm beige assistant bubbles, terracotta accent, serif headings over a sans-serif body. Chat column with a "Your space" side panel and a bottom message composer. No refinement images were generated: this session had no image-generation tool. Until individual raster icons are generated, the UI uses text labels only, with no SVG, emoji, or CSS-drawn icon substitutes. |
+| Approved scope | Chat screen: anonymous session start, conversation thread, message composer, crisis-resource view, "Your space" panel with memory proposals (review/edit/save/dismiss) and saved memories (delete), and sign-out. Other screens (Conversations, Saved, Settings, profile, mobile tab bar) are not yet in scope. |
+| Decision date | 2026-10-31 |
 
 The user requested a catalog of 100 design masters, image-generated app concepts
 informed by those references, and generated raster artwork for custom app icons
@@ -108,8 +108,8 @@ editorial material family and preserves transparency around the objects.
 
 ![Generated raster icon-family study](concepts/raster-icon-family-study.png)
 
-No direction has been selected, and no app styles have been changed. The boards
-are visual proposals. Their sample modules, text, decorative imagery, and icons
+Direction 01 was selected for the chat-screen scope recorded above. The boards
+remain visual proposals for everything outside that scope. Their sample modules, text, decorative imagery, and icons
 can be changed or removed as the product evolves.
 
 ## Asset policy

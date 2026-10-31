@@ -3,6 +3,7 @@ import { InMemoryMessageRepository, InMemorySessionRepository } from "./conversa
 import { createConversationService, type ConversationDeps } from "./conversation/respond";
 import type { LlmAdapter } from "./llm/adapter";
 import { MockLlmAdapter } from "./llm/mock";
+import { InMemoryMemoryProposalRepository } from "./memory/proposals";
 import { InMemoryMemoryRepository } from "./memory/store";
 import { InMemoryEmergencyContactRepository } from "./safety/contact";
 import type { SafetyLogger } from "./safety/crisis";
@@ -18,6 +19,7 @@ export function createInMemoryCompanion(
     sessions: new InMemorySessionRepository(),
     messages: new InMemoryMessageRepository(),
     memories: new InMemoryMemoryRepository(now),
+    proposals: new InMemoryMemoryProposalRepository(),
     socialActions: new InMemorySocialActionRepository(),
     contacts: new InMemoryEmergencyContactRepository(options.contactKey ?? randomBytes(32)),
     llm: options.llm ?? new MockLlmAdapter(),

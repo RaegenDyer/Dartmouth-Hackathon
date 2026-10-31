@@ -15,6 +15,7 @@ import { enforceMemoryDisclosure } from "../disclosure/enforce";
 import { LIMITS } from "../limits";
 import { LEAK_MARKERS, generateWithTimeout, type LlmAdapter } from "../llm/adapter";
 import { extractMemoryCandidates } from "../memory/capture";
+import type { MemoryProposalRepository } from "../memory/proposals";
 import { MemoryError, type Memory, type MemoryRepository } from "../memory/store";
 import { checkReply, checkUserMessage, type SafetyCategory } from "../safety/classifier";
 import type { EmergencyContactRepository } from "../safety/contact";
@@ -26,6 +27,7 @@ export interface ConversationDeps {
   sessions: SessionRepository;
   messages: MessageRepository;
   memories: MemoryRepository;
+  proposals: MemoryProposalRepository;
   socialActions: SocialActionRepository;
   contacts: EmergencyContactRepository;
   llm: LlmAdapter;
@@ -42,7 +44,8 @@ export interface RespondResult {
   route: ReplyRoute;
   crisis: CrisisView | null;
   social_action: string | null;
-  memories_created: string[];
+  /** Suggested memories awaiting the user's review. Nothing is saved until approved. */
+  memory_proposals: { id: string; text: string }[];
 }
 
 export class ConversationError extends Error {
@@ -92,7 +95,7 @@ export function createConversationService(deps: ConversationDeps) {
       route: "safety",
       crisis,
       social_action: null,
-      memories_created: [],
+      memory_proposals: [],
     };
   }
 
@@ -184,12 +187,14 @@ export function createConversationService(deps: ConversationDeps) {
       safety: false,
     });
 
-    const created: string[] = [];
-    const existing = new Set(allMemories.map((memory) => memory.text.toLowerCase()));
+    const proposed: { id: string; text: string }[] = [];
+    const pending = await deps.proposals.listPending(session.userId);
+    const known = new Set([...allMemories, ...pending].map((item) => item.text.toLowerCase()));
     for (const candidate of extractMemoryCandidates(text)) {
-      if (existing.has(candidate.toLowerCase())) continue;
+      if (known.has(candidate.toLowerCase())) continue;
       try {
-        created.push((await deps.memories.create(session.userId, candidate, at)).id);
+        const proposal = await deps.proposals.create(session.userId, candidate, at);
+        proposed.push({ id: proposal.id, text: proposal.text });
       } catch (error) {
         if (!(error instanceof MemoryError && error.code === "LIMIT_REACHED")) throw error;
       }
@@ -202,21 +207,22 @@ export function createConversationService(deps: ConversationDeps) {
       route,
       crisis: null,
       social_action: socialAction,
-      memories_created: created,
+      memory_proposals: proposed,
     };
   }
 
   return { respond };
 }
 
-/** Deletes all of a user's messages, sessions, memories, social actions, and contact. */
+/** Deletes all of a user's messages, sessions, memories, proposals, social actions, and contact. */
 export async function deleteAccountData(
-  deps: Pick<ConversationDeps, "sessions" | "messages" | "memories" | "socialActions" | "contacts">,
+  deps: Pick<ConversationDeps, "sessions" | "messages" | "memories" | "proposals" | "socialActions" | "contacts">,
   userId: string,
 ) {
   await Promise.all([
     deps.messages.deleteAllForUser(userId),
     deps.memories.deleteAllForUser(userId),
+    deps.proposals.deleteAllForUser(userId),
     deps.socialActions.deleteAllForUser(userId),
     deps.contacts.deleteAllForUser(userId),
   ]);
