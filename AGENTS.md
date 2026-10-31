@@ -2,6 +2,17 @@
 
 - This repository is the Dartmouth hackathon companion project. Do not carry
   assumptions or credentials over from other projects.
+- Mandatory frontend style checkpoint: before creating any user-facing frontend
+  screens, layouts, visual components, or styling, reopen the style discussion
+  with the project owner. Read docs/design/README.md and show/revisit its three
+  generated directions and raster icon study. No direction is currently approved;
+  the assistant's recommendation is not approval. If the owner has not recorded
+  a selection, revised direction, or explicit waiver, pause frontend design and
+  ask for that decision. Backend and nonvisual preparation may continue.
+- Record the owner's style decision, its scope, and date in docs/design/README.md
+  before proceeding, and update the README checkpoint status. An approval or
+  waiver covers its agreed scope; do not ask again for every component. Flag
+  frontend changes for this checkpoint during review before they are merged.
 - Read README.md, docs/architecture.md, and docs/api-contracts.md before feature
   work. Keep implemented behavior distinct from proposed contracts and drafts.
 - Use Node 22 and npm. Run npm run check and npm run build for code changes.

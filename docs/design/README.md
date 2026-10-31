@@ -3,6 +3,35 @@
 Status: design exploration before application styling. Product features, brand,
 and visual direction remain open. No concept board is an approved specification.
 
+## Required checkpoint before frontend creation
+
+**Checkpoint status: PENDING. No visual direction is approved.**
+
+The project owner asked that this style conversation come up again before any
+collaborator or AI agent creates the frontend design. Before creating user-facing
+screens, layouts, visual components, or styling:
+
+1. Revisit the three generated concepts below and the raster icon study with the
+   project owner. Summarize their differences and keep feature content mutable.
+2. Ask whether to select one, combine/refine them, explore a new direction, or
+   explicitly waive this checkpoint for a stated scope.
+3. Wait for the owner's decision, then record it with its scope and date below
+   and update the checkpoint in the root README before implementing the design.
+
+An assistant's recommendation of Warm editorial does not constitute approval.
+Backend and nonvisual preparation may continue while the checkpoint is pending.
+A recorded decision satisfies the checkpoint for its scope; repeat the discussion
+only if a later task changes that direction or the owner requests it.
+
+### Owner decision record
+
+| Field | Current value |
+| --- | --- |
+| Status | Pending |
+| Owner selection / revised direction / waiver | Not yet recorded |
+| Approved scope | None |
+| Decision date | Not yet recorded |
+
 The user requested a catalog of 100 design masters, image-generated app concepts
 informed by those references, and generated raster artwork for custom app icons
 instead of SVG/vector-library icons.

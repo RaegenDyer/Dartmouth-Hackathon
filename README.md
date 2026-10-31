@@ -12,6 +12,13 @@ feature sketches, database draft, API contracts, and backlog as proposals, not
 approved requirements. Do not implement an entire proposed feature list merely
 because it appears in the documentation.
 
+**Frontend style checkpoint: PENDING.** Before any collaborator or AI agent
+creates user-facing frontend screens, layouts, components, or styling, reopen the
+style conversation with the project owner and revisit the
+[generated concepts and icon study](docs/design/README.md). No direction has been
+approved. Record the owner's selection, revised direction, or explicit waiver
+there before proceeding; an assistant recommendation is not a decision.
+
 | Area | Actual progress | Still needed |
 | --- | --- | --- |
 | Application framework | Next.js/React/TypeScript starter runs without credentials. `/` is a preparation page; `GET /api/health` is the only implemented API route. | Product interface and application endpoints |
@@ -21,7 +28,7 @@ because it appears in the documentation.
 | Vercel | Hosting choice settled and API token verified. | Create the hosting project, set application environment variables, and deploy; no deployment has been performed |
 | GitHub | Repository access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, environment validation, and provider factories are written. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
-| Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Select/refine a direction before styling; mockup features are illustrative and mutable |
+| Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Mandatory owner style discussion before frontend creation; checkpoint is pending; mockup features remain mutable |
 
 The model client factory does not implement chat. The Supabase factories do not
 implement authentication. A migration file does not mean the hosted database has
