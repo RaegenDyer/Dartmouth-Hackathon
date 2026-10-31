@@ -127,7 +127,7 @@ let refreshed;
 {
   const { name, session } = readSession(jar);
   const expired = writeSession(name, { ...session, expires_at: Math.floor(Date.now() / 1000) - 60 });
-  const response = await fetch(`${base}/`, { headers: { cookie: toHeader(expired) }, redirect: "manual" });
+  const response = await fetch(`${base}/app`, { headers: { cookie: toHeader(expired) }, redirect: "manual" });
   refreshed = new Map(expired);
   absorbSetCookies(refreshed, response);
   const renewed = response.headers.getSetCookie().some((line) => line.startsWith(name));

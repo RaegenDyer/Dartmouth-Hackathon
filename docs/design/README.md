@@ -5,7 +5,7 @@ and visual direction remain open. No concept board is an approved specification.
 
 ## Required design workflow before frontend implementation
 
-**Checkpoint status: DECIDED for the chat-screen scope below (October 31, 2026).**
+**Checkpoint status: DECIDED for the chat app and public landing page below (October 31, 2026).**
 
 October 31 preference: the optional mascot should be a cute, whimsical animal or
 creature rather than a realistic human. This guides future image-generated
@@ -53,7 +53,7 @@ raster artwork.
 | Dark mode | Always the cozy light look, even when the device is in dark mode (revised 2026-10-31 by Neeraj Kumar after the evening palette still read as "unchanged dark" on dark-mode devices) |
 | Icons (interim) | Chat bubble, bookmark (memories), house (history), and gear (your data), cropped from the generated [raster icon family study](concepts/raster-icon-family-study.png) and exported as transparent 192px PNGs in `public/icons/`, approved by Neeraj Kumar on 2026-10-31. Text labels stay beside every icon. Final icons should still be generated individually at production resolution |
 | Image generation | Not used: no image-generation tool in this session; the collaborator approved the HTML preview. Illustrations and the mascot still need image-generated artwork |
-| Approved scope | All signed-in and signed-out app screens on desktop and phone |
+| Approved scope | All signed-in and signed-out app screens on desktop and phone. Raegen extended this direction to the public landing page in the scoped decision below |
 | Planned-feature placeholders | 2026-10-31, Neeraj Kumar: visible but disabled controls with a honey "coming soon" tag, placed where each feature will live: scenario chips above the composer (new conversation only), a microphone button (generated raster icon) beside send, companion style options (listener, practical, playful) in the sidebar and history tab, and "I did it" / "skip" on the weekly step card |
 | Decision date | 2026-10-31 |
 
@@ -66,8 +66,22 @@ raster artwork.
 | Reference | The design language of [skillsync.com](https://skillsync.com/), used as inspiration only: no logo, copy, illustrations, or page structure copied |
 | Selected concept | HTML preview "Candid Design Preview" (private artifact, 2026-10-31): off-white page, near-black ink, one orange accent; Geist and Geist Mono; large lowercase headlines with a gray second line; small uppercase mono labels; centered frame with hairline rules; flat cards with thin borders; matching dark theme |
 | Image generation | Not used: no image-generation tool was available in the session. The collaborator approved the HTML preview instead. Product illustrations and the deferred mascot still need image-generated raster artwork before they appear |
-| Approved scope | Chat app: welcome and age check, under-18 and setup notices, kill-switch notice, chat screen, conversation sidebar, and memory panel. A public landing page is proposed in the same preview and awaits a separate go-ahead |
+| Approved scope | Chat app: welcome and age check, under-18 and setup notices, kill-switch notice, chat screen, conversation sidebar, and memory panel. The public landing extension is approved in the decision below |
 | Decision date | 2026-10-31 |
+
+### Public landing page extension
+
+| Field | Decision |
+| --- | --- |
+| Deciding collaborator | Raegen Dyer |
+| Direction and authorization | October 31, 2026: implement the separate landing page as the first screen, add access to the app, and keep the existing design consistent. The collaborator explicitly delegated the remaining layout decisions |
+| Selected generated concept | [04 / Candid Warm hearth landing](concepts/04-candid-warm-hearth-landing.png), generated with the built-in image-generation model to match the latest app. The earlier minimal landing draft was superseded when the collaborator's Warm hearth changes arrived during implementation |
+| References from the 100-master catalog | Massimo and Lella Vignelli (consistent spacing), Beatrice Warde (reading clarity), Charles and Ray Eames and Ilse Crawford (human warmth), and Dieter Rams (understandable controls) |
+| Scope | Public landing at `/`, existing welcome/chat at `/app`, links into the app and back home, responsive layouts that follow the current always-light Warm hearth theme, and accurate explanations of current capabilities |
+| Assets and implementation | Generated board is a design reference, not the shipped interface. Use accessible HTML text and links; no new icon or illustration assets. No mascot, voice, testimonials, or unsupported product promises |
+| Source preview | The earlier private HTML artifact is not in the repository. This extension implements the recorded direction using the new saved generated board, rather than claiming to reproduce the unavailable artifact |
+
+![Candid Warm hearth landing design reference](concepts/04-candid-warm-hearth-landing.png)
 
 The 01 / Warm editorial record below is kept for history; it no longer applies to the app.
 
@@ -107,9 +121,11 @@ illustrative; the implemented app will use real accessible HTML text and control
 
 ## Generated concepts
 
-All four outputs were generated with the built-in image-generation tool and saved
+The three original app boards and icon study below were generated with the built-in image-generation tool and saved
 as 1536 x 1024 PNG files. The icon-family study has an actual alpha channel with
 fully transparent background pixels; the app boards are opaque presentation images.
+The later [Warm hearth landing board](concepts/04-candid-warm-hearth-landing.png)
+and its [full prompt](landing-generation-prompt.md) document the public landing extension.
 
 ### 01 / Warm editorial
 

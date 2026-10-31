@@ -41,6 +41,14 @@ Use one Next.js application, deployed on Vercel. Keep the interface, API, and
 server orchestration in this repository, with clear modules. A separate backend,
 queue, agent framework, ORM, or vector database is unnecessary for the first flow.
 
+The public front door is `/`, a static server-rendered landing page. It never
+reads identity or user data and remains visible to returning users. App entry
+links use `/app` with prefetch disabled so merely browsing the landing page does
+not initialize a session. `/app` renders the existing welcome/age-confirmation
+and chat component, restoring an existing confirmed session where available.
+Home links return to `/` without signing out. The session-refresh Proxy covers
+`/app` and API routes, excluding public health, rather than the landing page.
+
 ```mermaid
 flowchart LR
   subgraph Vercel[Vercel hosting]

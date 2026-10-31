@@ -18,16 +18,20 @@ feature sketches, database draft, API contracts, and backlog as proposals, not
 approved requirements. Do not implement an entire proposed feature list merely
 because it appears in the documentation.
 
-**Frontend style checkpoint: DECIDED for the chat app.** On October 31, 2026,
+**Frontend style checkpoint: DECIDED for the chat app and public landing page.** On October 31, 2026,
 Neeraj Kumar approved "Warm hearth" from an HTML preview: cozy oat/cocoa colors,
 sage memories, honey weekly step, in-chat memory cards, a phone layout with bottom
-tabs, and a warm evening dark mode. It replaces the earlier "Candid minimal"
-direction; see the [design decision record](docs/design/README.md). Illustrations
-and the mascot still need the collaborator discussion and image-generated artwork.
+tabs, and a cozy light palette even on dark-mode devices. It replaces the earlier "Candid minimal"
+direction; see the [design decision record](docs/design/README.md). Raegen Dyer
+extended the current app direction to the public landing page, with
+[a new image-generated landing concept and scoped decision](docs/design/README.md#public-landing-page-extension).
+The public landing page is at `/`; the existing welcome and chat flow is at `/app`.
+Other screens, illustrations, and the mascot still need their collaborator design
+discussion and image-generated artwork.
 
 | Area | Actual progress | Still needed |
 | --- | --- | --- |
-| Application framework | Next.js/React/TypeScript app. `/` uses the approved Candid minimal direction: anonymous session start, chat, crisis-resource view, memory suggestions to save/edit/dismiss, saved memories to delete, history, and sign-out. Health remains credential-free. | Remaining screens, streaming replies, and raster icons |
+| Application framework | Next.js/React/TypeScript app. `/` is a public landing page with app entry links; `/app` contains anonymous session start, chat, crisis-resource view, memory suggestions to save/edit/dismiss, saved memories to delete, history, and sign-out. Both follow the approved Warm hearth direction. Landing and health remain credential-free. | Remaining screens and streaming replies |
 | Anthropic | Production uses `claude-sonnet-5-5` with `LLM_ADAPTER=anthropic`; one bounded hosted model reply passed the activation check. Offline checks use mock fixtures. | Shared usage/rate budgets before a wider pilot |
 | Supabase | Anonymous sign-in enabled and verified live (`npm run verify:auth`, 16 checks). Session-refresh Proxy, `getClaims()`-verified actor with age gate and inactivity timeout, same-origin mutation guard, hardened cookies, and session/anonymous/sign-out routes. | Decide on permanent accounts so people can return across devices |
 | Data model | Hosted schema includes the 2,048-character ciphertext checks from `202610310002`; no duplicate DDL was needed during activation. App text is encrypted; 52 isolated checks and the hosted Unicode approval/reload test pass. | Durable turn claims, atomic version/count checks, and shared rate limits |
@@ -38,7 +42,7 @@ and the mascot still need the collaborator discussion and image-generated artwor
 | Optional voice input | [Deepgram architecture](docs/voice.md), session/provider interfaces, mono-microphone transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default; Vapi retired. | Verified-user session bootstrap, actual audio transport, microphone controls, and browser/device checks; no live capture or provider connection yet |
 | Optional audio output | [Tavus architecture](docs/tavus.md), private audio-only request/response contracts, supplied-text Echo builder, session/playback interfaces, and isolated server settings. Disabled by default; no camera/video flow. | Verify Echo + audio-only together on the account, implement authenticated ownership/budgets and REST/RTC transport; no live sessions or playback yet |
 | Optional mascot | Cute, whimsical animal/creature preference recorded; mascot implementation is deferred while speech architecture is prepared. | Collaborator design discussion, image-generated character options, selection, and animation; no mascot assets or UI implemented |
-| Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. Current app uses Neeraj's recorded Candid minimal decision. | Other screens and illustrative assets still need the collaborator design discussion; production raster icons need generating |
+| Visual exploration | [100 design references, three earlier app concepts, the generated landing concept, and a transparent raster icon-family study](docs/design/README.md). App uses Neeraj's Warm hearth decision; landing extends it with Raegen's authorization. | Other screens and illustrative assets still need the collaborator design discussion; final raster icons need individual generation |
 
 Chat and memory approval/reload work end to end on the hosted app. Conversations,
 memories, and suggestions are saved in Supabase, encrypted by the app, and kept until
@@ -58,7 +62,7 @@ recorded above; other screens still need their collaborator design discussion.
 Current local verification:
 
 - Clean dependency installation with `npm ci`.
-- `npm run check`: lint, formatting, TypeScript, 247 Vitest unit tests,
+- `npm run check`: lint, formatting, TypeScript, 251 Vitest unit tests,
   9 contract checks, 16 runtime/configuration checks, 12 voice-input checks,
   7 Tavus contract checks, 9 encrypted-environment checks, and 52 isolated
   database checks. These require no
@@ -66,8 +70,9 @@ Current local verification:
 - `npm run build`: production build.
 - `npm audit`: zero reported vulnerabilities after updating the lint toolchain's
   transitive `minimatch` dependency through a pinned override.
-- Browser checks: 7 pass, including the home page, health, and mocked guardrail
-  flows; 4 unfinished milestone flows remain skipped. Fast evals: 13 suites pass.
+- Browser checks: 10 pass for health, landing-to-app navigation for new visitors
+  on desktop and phone, returning sessions, and mocked guardrail/phone flows; 4 unfinished milestone flows remain
+  skipped. Fast evals: 13 suites pass.
 - Hosted activation: 32 checks pass for anonymous identity, secure cookies,
   one real Claude reply, approval-first memory, maximum-length Unicode storage,
   reload/decryption, history, cross-user 404s, and deletion. Both disposable Auth
@@ -189,7 +194,12 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. For the checks used in CI:
+Open http://localhost:3000 for the public landing page, or
+http://localhost:3000/app for the welcome/chat flow. The landing page remains
+public even with an existing session; it does not create accounts, fetch user
+data, or call a model. "Open app" and "Start a conversation" enter `/app`, where
+the existing adult confirmation and anonymous-session behavior apply. "Back to
+home" returns to `/` without signing out. For the checks used in CI:
 
 ```sh
 npm run check        # lint, Prettier, typecheck, Vitest, contract/runtime/schema checks
