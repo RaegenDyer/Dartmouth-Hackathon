@@ -41,3 +41,13 @@ describe("Candid speaks first", () => {
     expect(requests[1]?.history[0]?.role).toBe("user");
   });
 });
+
+describe("weekly small step card", () => {
+  it("splits the server's suggestion text into its own card and leaves other replies alone", async () => {
+    const { formatSuggestion } = await import("@/lib/companion/scheduler/weekly");
+    const { splitStep } = await import("@/lib/ui/step");
+    const text = `Nice reading day.\n\n${formatSuggestion("join a drop-in class or pickup game")}`;
+    expect(splitStep(text)).toEqual({ body: "Nice reading day.", step: "join a drop-in class or pickup game" });
+    expect(splitStep("No suggestion here.")).toEqual({ body: "No suggestion here.", step: null });
+  });
+});

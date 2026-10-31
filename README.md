@@ -19,11 +19,11 @@ approved requirements. Do not implement an entire proposed feature list merely
 because it appears in the documentation.
 
 **Frontend style checkpoint: DECIDED for the chat app.** On October 31, 2026,
-Neeraj Kumar approved the "Candid minimal" direction (off-white, Geist, hairline
-grid, one orange accent; inspired by skillsync.com) from an HTML preview, replacing
-01 / Warm editorial. See the [design decision record](docs/design/README.md#current-decision-candid-minimal-supersedes-01-for-the-app)
-for scope. Other screens, illustrations, and the mascot still need the
-collaborator design discussion and image-generated artwork.
+Neeraj Kumar approved "Warm hearth" from an HTML preview: cozy oat/cocoa colors,
+sage memories, honey weekly step, in-chat memory cards, a phone layout with bottom
+tabs, and a warm evening dark mode. It replaces the earlier "Candid minimal"
+direction; see the [design decision record](docs/design/README.md). Illustrations
+and the mascot still need the collaborator discussion and image-generated artwork.
 
 | Area | Actual progress | Still needed |
 | --- | --- | --- |

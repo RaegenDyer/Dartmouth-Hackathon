@@ -42,7 +42,20 @@ or the collaborator requests it. Implement the selected design with accessible
 HTML/CSS and real controls; image generation supplies the visual design and
 raster artwork.
 
-### Current decision: Candid minimal (supersedes 01 for the app)
+### Current decision: Warm hearth (supersedes Candid minimal for the app)
+
+| Field | Current value |
+| --- | --- |
+| Status | Decided (scoped) |
+| Deciding collaborator | Neeraj Kumar, with feedback from Raegen (layout that makes core features obvious, more color) and testers (cozier, less stark dark mode) |
+| Selected concept | HTML preview "Candid Warm Hearth" (private artifact, 2026-10-31): oat and cream surfaces, cocoa text, terracotta actions, sage for memories, honey for the weekly small step; rounder bubbles and pill buttons; Geist type kept |
+| Layout | Desktop: labeled left rail (chat, memories with a count, conversations), chat in the center, "what Candid remembers" panel on the right. Memory suggestions appear inside the chat as sage cards right after the reply they came from; the weekly small step is its own honey card. Phone: full-screen chat with bottom tabs for chat, memories (count), and history |
+| Dark mode | Follows the device setting with a warm "evening" palette (deep cocoa, cream text, amber and terracotta accents) instead of near-black |
+| Image generation | Not used: no image-generation tool in this session; the collaborator approved the HTML preview. Illustrations and the mascot still need image-generated artwork |
+| Approved scope | All signed-in and signed-out app screens on desktop and phone |
+| Decision date | 2026-10-31 |
+
+### Previous decision: Candid minimal (superseded by Warm hearth)
 
 | Field | Current value |
 | --- | --- |
