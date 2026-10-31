@@ -1,0 +1,89 @@
+# Visual exploration
+
+Status: design exploration before application styling. Product features, brand,
+and visual direction remain open. No concept board is an approved specification.
+
+The user requested a catalog of 100 design masters, image-generated app concepts
+informed by those references, and generated raster artwork for custom app icons
+instead of SVG/vector-library icons.
+
+## Reference catalog
+
+See [100 design references](design-masters.md). The catalog is a curated pool of
+principles, not an objective ranking or a recipe to combine 100 styles. Each
+concept selects a small compatible cluster and creates original work.
+
+## Directions
+
+| Direction | Principles | Visual treatment |
+| --- | --- | --- |
+| 01 / Warm editorial | Human-scaled material warmth; editorial order; clear symbols | Ivory, forest green, restrained terracotta; serif/sans hierarchy; tactile ceramic icons |
+| 02 / Playful civic | Wayfinding; modular rhythm; bold clarity; human play | Warm white, cobalt, tomato/yellow accents; strong grotesk type; dimensional wood/paper icons |
+| 03 / Evening room | Architectural proportion; quiet light; restrained objects | Ink teal, warm ivory, amber; spacious dark surfaces; ceramic/glass/brass raster icons |
+
+Desktop and mobile concepts use comparable sample content so the visual systems
+can be judged independently of feature choices. Text in generated mockups is
+illustrative; the implemented app will use real accessible HTML text and controls.
+
+## Generated concepts
+
+All four outputs were generated with the built-in image-generation tool and saved
+as 1536 x 1024 PNG files. The icon-family study has an actual alpha channel with
+fully transparent background pixels; the app boards are opaque presentation images.
+
+### 01 / Warm editorial
+
+Selected reference principles: Charles and Ray Eames, Alvar and Aino Aalto,
+Dieter Rams, Susan Kare, and Massimo and Lella Vignelli. A warm, tactile direction
+with an editorial reading hierarchy and restrained green/terracotta accents.
+
+![Warm editorial desktop and mobile app concept](concepts/01-warm-editorial.png)
+
+### 02 / Playful civic
+
+Selected reference principles: Otl Aicher, Alexander Girard, Saul and Elaine Bass,
+Lance Wyman, Wim Crouwel, and Margaret Calvert. Bold navigation and dimensional
+wood/paper artwork give this direction a more energetic public-facing character.
+
+![Playful civic desktop and mobile app concept](concepts/02-playful-civic.png)
+
+### 03 / Evening room
+
+Selected reference principles: Luis Barragan, Tadao Ando, Isamu Noguchi, Charlotte
+Perriand, Eileen Gray, and Kenya Hara. A quieter dark palette uses architectural
+light and ceramic/glass/brass materials. Its more abstract icon metaphors need
+further recognition testing before production.
+
+![Evening room desktop and mobile app concept](concepts/03-evening-room.png)
+
+### Raster icon-family study
+
+Six original ceramic icon concepts: home, conversation, saved item, profile,
+settings, and optional microphone input. Microphone artwork represents dictation,
+not a commitment to voice responses. This separate sheet explores the warm
+editorial material family and preserves transparency around the objects.
+
+![Generated raster icon-family study](concepts/raster-icon-family-study.png)
+
+No direction has been selected, and no app styles have been changed. The boards
+are visual proposals. Their sample modules, text, decorative imagery, and icons
+can be changed or removed as the product evolves.
+
+## Asset policy
+
+- Use original image-generated raster artwork for custom icons and illustrative
+  assets, following the user's preference. Do not substitute SVG icon packs,
+  icon fonts, emoji, or CSS-drawn stand-ins for those assets.
+- Keep labels beside navigation icons. Artwork does not replace accessible names,
+  keyboard behavior, sufficient contrast, or appropriate tap targets.
+- Generate production icons individually at suitable resolution with genuine
+  transparency after the direction is selected. The family sheet is a visual
+  study, not a claim of ready-to-use individual icon exports.
+- Implement layout, text, form controls, focus states, and responsive behavior in
+  HTML/CSS. Do not ship a generated screenshot as the interface.
+- Save project-bound generated images in this repository. Preserve prompts and
+  distinguish generated concepts from any later manually implemented screens.
+
+Generation uses the built-in image-generation tool. The complete prompts are in
+[generation-prompts.md](generation-prompts.md). The app's current CSS and components
+are not restyled as part of this exploration.

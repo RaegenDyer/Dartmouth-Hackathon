@@ -15,3 +15,7 @@
   contact with other people, or hidden memory persistence.
 - For account and console setup, prefer focused step-by-step guidance. Use
   existing authorized access when the user asks you to carry out the action.
+- For app visual design, use the image-generation workflow for original raster
+  icons and illustrative assets. The user prefers these over SVG/vector icon
+  packs, icon fonts, emoji, or CSS-drawn asset substitutes. Keep accessible text
+  labels and real HTML controls. Visual concepts remain proposals until selected.
