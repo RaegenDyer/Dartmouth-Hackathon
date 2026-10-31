@@ -101,7 +101,7 @@ two-option redirect (DB-2) and three unrouted extraction phrasings (MB-1).
 
 | ID | Status | Where | Notes |
 |---|---|---|---|
-| CD-1 | Done | `respond.ts`, `enforceAiStatus` | |
+| CD-1 | Done | `boundary/rules.ts` `OPENING_MESSAGE`, `respond.ts`, `enforceAiStatus` | Candid speaks first: every new conversation opens with a fixed message that states it is an AI (no model call, one question, no memories). Sessions created without it still get the disclosure on the first reply. |
 | CD-2 | Done | UI; E2E | |
 | CD-3, CD-4, CD-5 | Process | PR template | Current copy reviewed on 2026-10-31: no such claims found. |
 

@@ -3,6 +3,12 @@ import { normalizeForMatching } from "../limits";
 // Boundary rules enforced in code. Changes require a PR note and a matching
 // update to the eval datasets in evals/data.
 
+// Candid speaks first in every new conversation. Fixed text (no model call):
+// it carries the AI disclosure (CD-1), asks one question (IS-1), and never
+// mentions saved memories (IS-5).
+export const OPENING_MESSAGE =
+  "Hi, I'm Candid, an AI companion, not a person. I only remember what you choose to save, and you can delete anything. What's been on your mind today?";
+
 export const AI_DISCLOSURE =
   "Quick note before we start: I'm an AI companion, not a person. I only remember what you let me keep, and you can review, edit, or delete those memories at any time.";
 
