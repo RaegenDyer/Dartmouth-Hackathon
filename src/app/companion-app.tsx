@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import Link from "next/link";
 import { OPENING_MESSAGE } from "@/lib/companion/boundary/rules";
 import { greeting } from "@/lib/ui/greeting";
 import { splitStep } from "@/lib/ui/step";
@@ -83,11 +84,22 @@ function Wordmark() {
   );
 }
 
+function WelcomeBrand() {
+  return (
+    <div className="welcome-brand">
+      <Wordmark />
+      <Link className="app-home" href="/">
+        Back to home
+      </Link>
+    </div>
+  );
+}
+
 /** OP-1: static notice shown when chat is switched off. */
 function ChatDisabledNotice() {
   return (
     <main className="welcome">
-      <Wordmark />
+      <WelcomeBrand />
       <h1>
         Chat is turned off right now.<span className="subline">please reach a person instead.</span>
       </h1>
@@ -398,7 +410,7 @@ export function CompanionApp() {
   if (status !== "ready") {
     return (
       <main className="welcome">
-        <Wordmark />
+        <WelcomeBrand />
         <span className="eyebrow label">
           proof of concept · <b>for adults 18+</b>
         </span>
@@ -568,6 +580,9 @@ export function CompanionApp() {
           Candid is an AI companion, not a person or a clinical service. Replies can be wrong.
         </span>
         <span className="poc-short">An AI, not a person or clinical service.</span>
+        <Link className="app-home mobile-home" href="/" aria-label="Back to home">
+          Home
+        </Link>
       </p>
 
       <aside className="rail" aria-label="Conversations and account">
@@ -592,6 +607,9 @@ export function CompanionApp() {
             <Icon name="settings" size={20} />
             Your data
           </span>
+          <Link className="app-home" href="/">
+            Back to home
+          </Link>
           {confirmDelete ? (
             <div className="confirm" role="group" aria-label="Confirm data deletion">
               <p>Delete all your conversations, memories, and suggestions? This can&apos;t be undone.</p>

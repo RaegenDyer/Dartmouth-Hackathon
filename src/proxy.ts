@@ -6,6 +6,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Skip static assets and the public liveness route.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)"],
+  // The static public landing page needs no session refresh. Keep refresh on
+  // app pages and API routes; each private handler still verifies identity.
+  matcher: ["/app/:path*", "/api/((?!health$).*)"],
 };

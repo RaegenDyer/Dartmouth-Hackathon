@@ -208,6 +208,27 @@ button:disabled {
 }
 
 /* Welcome, age check, and notices */
+.welcome-brand {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.app-home {
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+  text-underline-offset: 4px;
+  padding: 8px 0;
+}
+.app-home:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.mobile-home {
+  display: none;
+}
 .welcome {
   max-width: 720px;
   margin: 0 auto;
@@ -708,6 +729,11 @@ button:disabled {
 
 /* Phone: one section at a time, bottom tabs */
 @media (max-width: 760px) {
+  .mobile-home {
+    display: inline;
+    font-size: 12px;
+    padding: 2px 0;
+  }
   .shell {
     height: 100vh;
     height: 100dvh;

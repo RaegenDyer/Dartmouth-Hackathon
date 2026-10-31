@@ -61,8 +61,12 @@ the plan requirements before relying on collaborator deployments.
 
 ## Verify the hosted foundation
 
-1. Open the production domain and confirm the setup instructions load, or the
-   chat screen if all runtime settings have deliberately been supplied.
+1. Open the production domain and confirm the public Candid landing page loads.
+   It stays public even with an existing session. Use "Open app" or "Start a
+   conversation" to enter `/app`: a new visitor sees the adult confirmation;
+   an existing confirmed session opens chat. Setup instructions appear only in
+   `/app` if the runtime environment is unconfigured. "Back to home" returns
+   to the landing page without signing out.
 2. Open `/api/health` on that same domain. Expect HTTP 200 and:
 
    ```json

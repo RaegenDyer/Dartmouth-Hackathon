@@ -4,6 +4,10 @@ Mode: built-in image generation. These are visual exploration prompts, not
 implementation specifications or a finalized feature list. No existing artwork,
 logos, or proprietary app screens are supplied as copying targets.
 
+The later Candid minimal landing-page extension has its full prompt in
+[landing-generation-prompt.md](landing-generation-prompt.md), alongside the
+[scoped design decision](README.md#public-landing-page-extension).
+
 The reference catalog in `design-masters.md` informs the principles below. Each
 direction selects a small compatible cluster; it does not try to combine all 100
 references into one interface.
