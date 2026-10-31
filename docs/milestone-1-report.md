@@ -145,3 +145,10 @@ Verification uses synthetic fixtures and mocked providers. Hosted JWTs, database
 transactions/concurrency, browser audio, and the proposed approval-first memory
 flow remain integration/product work. No paid model or voice calls are required
 by these regression checks.
+
+The full-history secret scan also identified a synthetic service-role JWT in
+the original development-settings negative test. Its header/signature are
+placeholders. One exact historical fingerprint is documented in
+`.gitleaksignore`; no file or detector rule is excluded. The current fixture
+constructs its dummy payload explicitly, and CI prints fully redacted finding
+details for future scan failures.
