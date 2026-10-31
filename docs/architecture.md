@@ -2,8 +2,9 @@
 
 Status: merged chat/persistence baseline, October 31, 2026. Anonymous auth, chat,
 approval-first memories, and Supabase repositories exist; see README for tested
-scope. The collaborator recorded two applied migrations. The additive Unicode
-ciphertext-capacity migration is pending. Future streaming and shared atomicity
+scope. The collaborator recorded two applied migrations. Hosted ciphertext
+constraints match the additive Unicode-capacity migration, and configured
+sign-in/chat/memory persistence passed 32 hosted checks. Future streaming and shared atomicity
 requirements below remain work for review and implementation.
 
 ## Product boundary
