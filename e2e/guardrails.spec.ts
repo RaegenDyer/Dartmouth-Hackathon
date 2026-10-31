@@ -60,6 +60,11 @@ test("CS-5: the crisis screen contains no chat input", async ({ page }) => {
 test("CD-2: the proof-of-concept notice is visible on the signed-in screen", async ({ page }) => {
   await mockSignedIn(page, {});
   await page.goto("/app");
+  // Planned features are visible but disabled and labeled.
+  await expect(page.getByRole("group", { name: "Scenarios, coming soon" }).getByRole("button").first()).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Voice conversations, coming soon" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /listener/ })).toBeDisabled();
+  await expect(page.getByText("coming soon").first()).toBeVisible();
   await expect(page.getByRole("note")).toContainText(/proof of concept/i);
 });
 

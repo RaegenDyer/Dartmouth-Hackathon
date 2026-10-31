@@ -156,6 +156,20 @@ data key, Supabase storage, and Claude Sonnet 5.5. The hosted smoke test passed
 Supabase's anonymous provider was already enabled and the ciphertext constraints
 were already correct, so no authentication toggle or schema DDL was required.
 
+## Shown as "coming soon" in the app
+
+These planned features appear in the interface as disabled controls with a
+"coming soon" tag. They do nothing yet:
+
+- Scenario mode (talk about my day, find activities I'd like, chat in a tone I choose, plan a small social step, just listen)
+- Voice conversations (microphone beside send; Deepgram/Tavus architecture is prepared but disabled)
+- Companion style (listener, practical, playful; voice style later)
+- Tracking the weekly small step ("I did it" / "skip")
+
+Not yet represented in the UI: an editable user profile and the 7-day UCLA
+3-item loneliness check-in with self-reported human interactions. Any screening
+for the target audience must happen outside chat (guardrail IS-6).
+
 ## Exploratory product direction
 
 The current idea is a nonclinical companion for adults settling into a new city

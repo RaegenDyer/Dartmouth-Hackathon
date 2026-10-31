@@ -60,7 +60,7 @@ two-option redirect (DB-2) and three unrouted extraction phrasings (MB-1).
 |---|---|---|---|
 | MP-1 | Done | `memory/capture.ts`; eval C1 | Health, sexual, contact, and third-party private details blocked, also for user-edited text. |
 | MP-2 | Done | `llm/adapter.ts` data block; `isAllowedMemoryText`; eval E3 | Instruction-like memory text is refused at approval. |
-| MP-3 | Done (open value) | `memory/proposals.ts`, `runRetention` | Default 90 days, `MEMORY_EXPIRY_DAYS`. "Keep until I delete it" option. Expiry job runs at most once a minute. |
+| MP-3 | Done (open value) | `memory/proposals.ts`, `runRetention` | Default 90 days, `MEMORY_EXPIRY_DAYS`. "Keep until I delete it" option, and saved memories can be edited with a custom expiry date (up to a year). Expiry job runs at most once a minute. |
 | MP-4 | Done | eval C3 | |
 | MP-5 | Done | `limits.ts` | 200. |
 | MP-6 | Done | `disclosure/enforce.ts`; eval C2 | |
