@@ -12,7 +12,8 @@ panel, and one suggested social action that the person chooses. The app is
 nonclinical and should encourage human relationships and independence.
 
 Two initial conversation scenarios are `check_in` and `social_step`. Additional
-scenarios, a product name, visuals, and model choice remain team decisions.
+scenarios, broader visuals, and model choice remain team decisions. The product
+name is Candid (decided 2026-10-31).
 Optional dictation later turns speech into editable text before the user sends
 it. Spoken responses, phone calls, avatars, live event scraping, and autonomous
 messages to other people are outside the initial scope.
@@ -189,7 +190,7 @@ whole environment/configuration objects. Additional analytics vendors can wait.
 
 ## Decisions still needed with the team
 
-- Product name, interaction design, and the precise newcomer scenario.
+- Interaction design beyond the chat screen, and the precise newcomer scenario.
 - Anonymous demo sessions versus permanent participant accounts.
 - Model selection and explicit per-user/per-session cost limits.
 - Conversation-history retention, memory defaults, and deletion controls.

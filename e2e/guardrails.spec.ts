@@ -60,7 +60,7 @@ test("CS-5: the crisis screen contains no chat input", async ({ page }) => {
 test("CD-2: the proof-of-concept notice is visible on the signed-in screen", async ({ page }) => {
   await mockSignedIn(page, {});
   await page.goto("/");
-  await expect(page.getByRole("note")).toContainText("Proof of concept");
+  await expect(page.getByRole("note")).toContainText(/proof of concept/i);
 });
 
 test("AA-1: someone who says they are under 18 cannot continue", async ({ page }) => {

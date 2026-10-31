@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Companion",
-  description: "A nonclinical AI companion for settling into a new place.",
+  title: "Candid",
+  description: "Candid: a nonclinical AI companion for settling into a new place.",
   robots: { index: false, follow: false },
 };
 

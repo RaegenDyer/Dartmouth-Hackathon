@@ -67,7 +67,7 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "nu
 function ChatDisabledNotice() {
   return (
     <main className="welcome">
-      <p className="brand">Companion</p>
+      <p className="brand">Candid</p>
       <h1>Chat is turned off right now.</h1>
       <div className="notice crisis-notice" role="alert">
         <h2>If you need help now</h2>
@@ -364,7 +364,7 @@ export function CompanionApp() {
   if (status !== "ready") {
     return (
       <main className="welcome">
-        <p className="brand">Companion</p>
+        <p className="brand">Candid</p>
         <h1>{hello} How was today?</h1>
         {status === "loading" && <p aria-live="polite">Loading…</p>}
         {status === "unconfigured" && (
@@ -379,7 +379,7 @@ export function CompanionApp() {
         {status === "age-gate" && (
           <>
             <p className="lede">
-              An AI companion for settling into a new place. You choose what it remembers, and it will not contact
+              Candid is an AI companion for settling into a new place. You choose what it remembers, and it will not contact
               anyone for you. This is a proof of concept.
             </p>
             {/* AA-1: placeholder wording, pending team and legal review. */}
@@ -418,7 +418,7 @@ export function CompanionApp() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <p className="brand">Companion</p>
+        <p className="brand">Candid</p>
         <button type="button" className="quiet" onClick={newConversation}>
           New conversation
         </button>
@@ -503,7 +503,7 @@ export function CompanionApp() {
       <main className="today">
         {/* CD-2 */}
         <p className="poc-notice" role="note">
-          Proof of concept: an AI companion, not a person or a clinical service. Replies can be wrong.
+          Candid is a proof of concept: an AI companion, not a person or a clinical service. Replies can be wrong.
         </p>
         <header className="today-header">
           <h1>{hello}</h1>
@@ -520,7 +520,7 @@ export function CompanionApp() {
               )}
               {messages.map((message) => (
                 <div key={message.id} className={`bubble ${message.role}${message.crisis ? " crisis" : ""}`}>
-                  <span className="sr-only">{message.role === "user" ? "You said:" : "Companion said:"}</span>
+                  <span className="sr-only">{message.role === "user" ? "You said:" : "Candid said:"}</span>
                   <MessageText text={message.text} />
                   {message.crisis && (
                     <div className="crisis-detail">
@@ -548,7 +548,7 @@ export function CompanionApp() {
                   )}
                 </div>
               ))}
-              {sending && <p className="typing">Companion is replying…</p>}
+              {sending && <p className="typing">Candid is replying…</p>}
             </div>
 
             {error && (

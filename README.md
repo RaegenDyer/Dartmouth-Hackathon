@@ -1,4 +1,7 @@
-# Dartmouth Hackathon
+# Candid
+
+Candid is the product name (decided 2026-10-31 by Neeraj Kumar). The repository
+keeps its original name, Dartmouth-Hackathon.
 
 ## Start here: agent handoff
 
@@ -114,8 +117,8 @@ commit here after the first hosted deployment is verified.
 
 The current idea is a nonclinical companion for adults settling into a new city
 or program, helping them build human connections. **Designed to be uninstalled**
-is a working principle. The name, visual direction, and detailed features are
-not finalized. Text input and text output are the working scope; optional
+is a working principle. The product is named **Candid**; the chat-screen visual
+direction is decided, and detailed features are not finalized. Text input and text output are the working scope; optional
 speech-to-text input can be added later. Voice responses are not currently planned.
 Vapi is selected for that optional input path; its disabled architecture and
 transcript handling are prepared without a live provider connection.
