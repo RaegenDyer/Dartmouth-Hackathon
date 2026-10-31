@@ -606,8 +606,9 @@ export function CompanionApp() {
                     <label htmlFor={`proposal-${proposal.id}`} className="sr-only">
                       Suggested memory, editable
                     </label>
-                    <input
+                    <textarea
                       id={`proposal-${proposal.id}`}
+                      rows={2}
                       value={edits[proposal.id] ?? proposal.text}
                       maxLength={280}
                       onChange={(event) => setEdits((current) => ({ ...current, [proposal.id]: event.target.value }))}

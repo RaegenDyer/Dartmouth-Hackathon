@@ -32,8 +32,10 @@ style discussion, image-generated mockups informed by the
 | Optional voice input | [Vapi architecture](docs/voice.md), session/provider interfaces, user-transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default. | Assistant/account setup, verified-user session bootstrap, actual SDK transport, no-spoken-reply/cost validation, and browser/device checks; no microphone or calls run yet |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Chat screen decided (01 / Warm editorial, Oct 31); other screens still need the collaborator design discussion; production raster icons still need generating |
 
-Chat works end to end locally, but conversations and memories live in server
-memory and vanish on restart; it is not ready to deploy. A migration file does not
+Chat works end to end locally. Conversations, memories, and suggestions are saved
+in Supabase (migrations applied 2026-10-31), encrypted by the app, and kept until
+the user deletes them. Rate limits and idempotency are still per server process,
+so a multi-instance deployment needs shared stores for those. A migration file does not
 mean the hosted database has that schema. Anthropic is called only when
 `LLM_ADAPTER=anthropic`; otherwise replies come from the deterministic mock.
 

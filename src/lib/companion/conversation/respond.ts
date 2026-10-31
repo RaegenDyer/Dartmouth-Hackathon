@@ -15,7 +15,7 @@ import {
   stripPermanencePromises,
 } from "../boundary/rules";
 import { enforceInteractionStyle } from "../boundary/style";
-import { contentWords, enforceMemoryDisclosure } from "../disclosure/enforce";
+import { contentWords, enforceMemoryDisclosure, replyReferencesMemory } from "../disclosure/enforce";
 import { DEFAULT_POLICY, LIMITS, type GuardrailPolicy } from "../limits";
 import { LEAK_MARKERS, generateWithTimeout, type LlmAdapter } from "../llm/adapter";
 import type { Logger } from "../log";
@@ -267,7 +267,13 @@ export function createConversationService(deps: ConversationDeps) {
       reply = enforceInteractionStyle(reply, { userMessage: text, priorReplies });
       const disclosed = enforceMemoryDisclosure(reply, generated.memoriesUsed, eligible);
       reply = disclosed.replyText;
-      memoriesUsed = disclosed.memoriesUsed;
+      // IS-5: count memories the reply visibly references, even if the model did not list them.
+      memoriesUsed = [
+        ...new Set([
+          ...disclosed.memoriesUsed,
+          ...eligible.filter((memory) => replyReferencesMemory(reply, memory.text)).map((memory) => memory.id),
+        ]),
+      ];
       modelSuggestions = (generated.memorySuggestions ?? []).filter((item) => acceptableModelSuggestion(item, text));
     }
     if (route !== "normal") {
@@ -324,13 +330,19 @@ export function createConversationService(deps: ConversationDeps) {
     const proposed: { id: string; text: string }[] = [];
     const pending = await deps.proposals.listPending(session.userId);
     const known = new Set([...allMemories, ...pending].map((item) => item.text.toLowerCase()));
-    const candidates = [...extractMemoryCandidates(text), ...modelSuggestions].map((item) => {
+    // Model suggestions first: they are usually single facts. Skip any candidate that
+    // mostly repeats one already saved, pending, or proposed in this turn.
+    const candidates = [...modelSuggestions, ...extractMemoryCandidates(text)].map((item) => {
       const trimmed = item.replace(/\s+/g, " ").trim();
       return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
     });
+    const overlaps = (candidate: string) =>
+      [...known].some(
+        (existing) => replyReferencesMemory(existing, candidate) || replyReferencesMemory(candidate, existing),
+      );
     for (const candidate of candidates) {
       if (proposed.length >= 2) break;
-      if (known.has(candidate.toLowerCase())) continue;
+      if (known.has(candidate.toLowerCase()) || overlaps(candidate)) continue;
       known.add(candidate.toLowerCase());
       try {
         const proposal = await deps.proposals.create(session.userId, candidate, at, session.id);

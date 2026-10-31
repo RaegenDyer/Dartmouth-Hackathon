@@ -1,8 +1,8 @@
 # API contracts
 
 These are proposed contracts for implementation. Routes marked "Local" exist
-today but store data in server process memory (cleared on restart) and differ
-from the proposal as noted; they are for local testing, not deployment.
+and store data in Supabase (or process memory with `COMPANION_STORAGE=memory`),
+but still differ from the proposal as noted (JSON instead of SSE, no version checks).
 All other routes below are intentionally absent until their authorization,
 business logic, persistence, and tests are ready. Shared request/event schemas
 are in `src/lib/contracts/index.ts`.

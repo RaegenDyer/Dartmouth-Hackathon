@@ -51,4 +51,34 @@ describe("model memory suggestions", () => {
     expect(await app.deps.memories.list("u1")).toEqual([]);
     expect((await app.deps.sessions.get(session.id))?.title).toBe("I really enjoy hiking on weekends");
   });
+
+  it("does not propose a suggestion that repeats another", async () => {
+    const llm: LlmAdapter = {
+      generate: async () => ({
+        text: "Nice.",
+        memoriesUsed: [],
+        memorySuggestions: ["You just moved to Hanover for grad school."],
+      }),
+    };
+    const app = createInMemoryCompanion({ llm });
+    const session = await app.deps.sessions.create("u1", new Date());
+    const result = await app.respond(session.id, "I just moved to Hanover for grad school.");
+    expect(result.memory_proposals.map((proposal) => proposal.text)).toEqual([
+      "You just moved to Hanover for grad school.",
+    ]);
+  });
+
+  it("IS-5: counts a memory the reply references even when the model does not list it", async () => {
+    const llm: LlmAdapter = {
+      generate: async () => ({
+        text: "You mentioned you enjoy hiking on weekends. Try the river trail.",
+        memoriesUsed: [],
+      }),
+    };
+    const app = createInMemoryCompanion({ llm });
+    const session = await app.deps.sessions.create("u1", new Date());
+    const memory = await app.deps.memories.create("u1", "You enjoy hiking on weekends.", new Date());
+    expect((await app.respond(session.id, "Any hiking ideas?")).memories_used).toEqual([memory.id]);
+    expect((await app.deps.sessions.get(session.id))?.memoriesReferenced).toEqual([memory.id]);
+  });
 });

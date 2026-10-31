@@ -34,10 +34,14 @@ export function isChatDisabled(env: Record<string, string | undefined> = process
   return env.COMPANION_CHAT_DISABLED?.trim().toLowerCase() === "true";
 }
 
+/** Bump when the store's shape changes, so a dev hot reload rebuilds it. */
+const STORE_VERSION = 2;
+
 /** Data that must survive across requests and dev hot reloads. */
 function createStore() {
   const { deps } = createInMemoryCompanion({ log: consoleLogger, contactKey: resolveDataKey() });
   return {
+    version: STORE_VERSION,
     repositories: deps,
     rateLimiter: createMessageRateLimiter(),
     /** clientRequestId -> turn, so a retried send never runs the model twice. */
@@ -71,7 +75,8 @@ export interface CompanionCaller {
  * caller at most once a minute per process.
  */
 export function getCompanion(caller: CompanionCaller) {
-  const store = (globalStore.__companionStore ??= createStore());
+  if (globalStore.__companionStore?.version !== STORE_VERSION) globalStore.__companionStore = createStore();
+  const store = globalStore.__companionStore;
   const repositories =
     storageMode() === "memory"
       ? store.repositories
