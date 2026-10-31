@@ -83,10 +83,17 @@ needed for this first deployment.
    is encrypted under that key, and a different key cannot read it.
 2. Apply the reviewed additive migration
    `supabase/migrations/202610310002_ciphertext_capacity.sql` using the team's
-   database workflow. The earlier two migrations were recorded as applied by
-   Neeraj; this new Unicode-capacity migration has not been applied by this pass.
-3. Add the runtime settings below and redeploy. Use `LLM_ADAPTER=mock` until a
-   model and shared usage limits are chosen; optional voice flags stay false.
+   database workflow. Done 2026-10-31: all three migrations are applied.
+3. Add the runtime settings below and redeploy. Optional voice flags stay false.
+
+**Status, 2026-10-31 (Neeraj Kumar):** Production environment variables are set
+in Vercel for `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+`ANTHROPIC_API_KEY` (sensitive), `ANTHROPIC_MODEL`, `LLM_ADAPTER=anthropic`,
+`COMPANION_STORAGE=supabase`, and the established `CONTACT_ENCRYPTION_KEY`
+(sensitive), Production target only. With `LLM_ADAPTER=anthropic` on a public URL,
+anyone who passes the age check can spend model credit; per-instance rate limits
+apply, and shared usage limits are still to be built. Set `LLM_ADAPTER=mock` in
+Vercel and redeploy to stop model calls.
 
 In Project Settings -> Environment Variables, add the values for the intended
 Production and/or Preview environment, then redeploy. GitHub Actions secrets are

@@ -4,8 +4,9 @@ The migrations `migrations/202610300001_initial_schema.sql` and `migrations/2026
 
 Read [the data model](../docs/data-model.md) before changing the schema. Keep database changes in migrations so contributors work from the same definition.
 
-The additive `202610310002_ciphertext_capacity.sql` migration is **pending hosted
-application**. It expands only memory/proposal ciphertext capacity from 1,000 to
+The additive `202610310002_ciphertext_capacity.sql` migration was **applied to the
+hosted project on 2026-10-31** (Neeraj Kumar approved; both constraints verified at
+2,048 afterwards). It expands only memory/proposal ciphertext capacity from 1,000 to
 2,048 stored characters so valid 280-unit Unicode memories survive AES-GCM/Base64
 expansion. The application plaintext limit stays 280. Apply this migration through
 the team's normal database workflow before enabling configured chat on Vercel.

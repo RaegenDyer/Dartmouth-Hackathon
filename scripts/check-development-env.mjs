@@ -94,7 +94,17 @@ test("GPG encryption roundtrip is opaque and import refuses to overwrite an exis
   // Exercise the application's actual dotenv loader, isolated from this process
   // and any ambient provider settings. It reads only the dummy checkout.
   const env = { ...process.env };
-  for (const name of [...APP_SETTINGS, "LLM_ADAPTER", "VOICE_INPUT_ENABLED", "TAVUS_AUDIO_ENABLED"]) delete env[name];
+  // Also drop every imported name: hosted builds (Vercel) define runtime
+  // settings such as CONTACT_ENCRYPTION_KEY, which Next's loader would keep.
+  for (const name of [
+    ...APP_SETTINGS,
+    ...Object.keys(imported),
+    "LLM_ADAPTER",
+    "VOICE_INPUT_ENABLED",
+    "TAVUS_AUDIO_ENABLED",
+  ]) {
+    delete env[name];
+  }
   const loaded = spawnSync(process.execPath, ["--input-type=module", "-e", `
     import nextEnv from '@next/env';
     const result = nextEnv.loadEnvConfig(process.argv[1], true, { error() {} }, true);

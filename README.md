@@ -237,10 +237,12 @@ vercel.json                  Vercel framework, installation, and checked build
 - `.env.local`: local **application** settings; ignored by Git.
 - `.env.example`: safe names and empty values; committed for contributors.
 - `credentials.env`: local **management** access; ignored by Git and Vercel uploads.
-- GitHub Actions Secrets: `ANTHROPIC_API_KEY`, `VERCEL_TOKEN`,
+- GitHub Actions Secrets: `ANTHROPIC_API_KEY`, `CONTACT_ENCRYPTION_KEY` (backup of
+  the established data key, added 2026-10-31), `VERCEL_TOKEN`,
   `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `DEEPGRAM_API_KEY`,
   `TAVUS_API_KEY`, and `TAVUS_PAL_ID` have been uploaded and their presence verified.
-  GitHub does not return their saved values to local clones.
+  GitHub does not return their saved values to local clones, and the running app
+  never reads them: hosted runtime settings live in Vercel environment variables.
 - `secrets/development.env.gpg`: encrypted application-only development settings
   for collaborators. Use [the local secrets guide](docs/development-secrets.md).
   Its separate unlock file `.secrets/development-env.key` stays private/ignored;
