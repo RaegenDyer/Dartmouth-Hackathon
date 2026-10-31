@@ -39,6 +39,9 @@ review reminder, not an automated block on a direct Git push.
    in `src/lib/contracts` rather than defining a competing request format.
 5. Before handing off, run `npm run check` and `npm run build`.
 
+In Windows PowerShell, if execution policy blocks `npm.ps1`, use `npm.cmd`
+for these commands (for example, `npm.cmd ci`). No policy change is needed.
+
 ## Working on live integrations
 
 Copy `.env.example` to `.env.local`. Get development application settings through
@@ -54,6 +57,12 @@ Only these values are application settings:
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe application identity; RLS still required |
 | `ANTHROPIC_API_KEY` | Server only |
 | `ANTHROPIC_MODEL` | Server only; a model ID available to the configured workspace |
+
+Use an HTTP(S) Supabase URL and an `sb_publishable_` key; legacy `anon` JWTs
+also work. Secret keys and `service_role` JWTs are rejected. Both public settings
+may be blank for the preparation app, but a partial or invalid configuration
+fails before Next.js bundles browser code. Do not put privileged keys in any
+`NEXT_PUBLIC_*` variable. See [Supabase key types](https://supabase.com/docs/guides/getting-started/api-keys).
 
 Management credentials are not required to develop the interface or run normal
 user-scoped application queries. Do not copy the owner's `credentials.env` into
@@ -91,6 +100,13 @@ unrelated changes out of the same branch.
   with separate users, before applying a migration to the shared app database.
 - CI uses no provider credentials. SQL checks run only in an isolated in-memory
   PostgreSQL instance; CI does not apply SQL to Supabase or deploy the app.
+- `npm run check` includes request-contract and runtime-configuration regression
+  checks as well as lint, types, and SQL behavior. They use fake settings and do
+  not call paid services. CI also runs `npm audit --audit-level=moderate`.
+- `minimatch` is pinned to 11.0.1 through an npm override to fix the lint
+  toolchain's [glob-pattern amplification advisory](https://github.com/isaacs/minimatch/security/advisories/GHSA-g3hv-75wg-m249).
+  The installed consumers use APIs retained in 11; rerun lint and the full checks
+  when changing this override or upgrading those tools.
 - Feature tests should cover ownership, approval, concurrency, and failure paths
   when those behaviors are implemented. Do not represent stubs as completed tests.
 

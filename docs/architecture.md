@@ -95,6 +95,8 @@ signup, add SMTP, or introduce an OAuth provider merely to finish the scaffold.
 6. Stream a bounded Anthropic request as the events in `api-contracts.md`.
    The SDK factory has a timeout and disables automatic retries. Handle timeouts,
    browser cancellation, and provider errors deliberately in the feature service.
+   It also fixes the official API endpoint and disables SDK logging so ambient
+   `ANTHROPIC_BASE_URL`/`ANTHROPIC_LOG` settings cannot redirect keys or log chat.
 7. Recheck memory revision, conversation epoch, and expiry deadline while
    streaming and before committing a result. Cancel/discard a stale turn. Any
    text already displayed cannot be recalled; clear the interrupted answer in
@@ -156,9 +158,16 @@ Management credentials remain in ignored `credentials.env` or GitHub Actions
 Secrets. GitHub's secret values are not retrieved back onto contributor machines.
 No module imports `credentials.env`, and `.vercelignore` excludes local secrets
 from source uploads. Only app variables are copied to Vercel runtime settings.
+Public Supabase settings are validated both at client construction and while
+loading Next.js configuration before bundling. The credential-free preparation
+app permits both public settings to be blank; once either is supplied, both must
+be valid. Only HTTP(S) endpoints and browser-safe publishable or legacy `anon`
+keys are accepted. Legacy JWT role inspection is a configuration-type check, not
+signature verification; Supabase still verifies requests and RLS.
 
-The current CI workflow installs locked dependencies, lints, generates Next.js
-types, typechecks, runs isolated SQL behavior checks, and builds. It requires no
+The current CI workflow installs locked dependencies, audits them, lints,
+generates Next.js types, typechecks, runs contract/runtime regression checks and
+isolated SQL behavior checks, and builds. It requires no
 secrets. The SQL harness stubs Supabase identity/roles; it does not verify hosted
 JWT/API behavior or concurrency. A deployment workflow can
 be added after the team selects its deployment branch and the Vercel project is

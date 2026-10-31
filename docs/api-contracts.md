@@ -12,6 +12,9 @@ are in `src/lib/contracts/index.ts`.
 - Accept JSON with strict schemas. Initial text limit: 4,000 characters per user
   message; initial JSON body cap: 16 KiB. Reject oversized bodies before reading
   them fully. A browser-side limit is a convenience, not the server's limit.
+- Persisted text rejects NUL characters and unpaired UTF-16 surrogates before
+  reaching PostgreSQL. Valid Unicode, including emoji and multiline text, is
+  supported. Schema string limits count JavaScript UTF-16 code units.
 - Check request origin/CSRF on cookie-authenticated mutations. Keep public CORS
   disabled unless a specific cross-origin client is introduced.
 - Map database snake_case to camelCase DTOs in the server repository layer.

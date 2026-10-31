@@ -27,10 +27,10 @@ choose and code its own style. No direction has been selected yet.
 | Application framework | Next.js/React/TypeScript starter runs without credentials. `/` is a preparation page; `GET /api/health` is the only implemented API route. | Product interface and application endpoints |
 | Anthropic | Credentials verified with a successful live text request. Server-only SDK client factory exists. | Connect the app to a model request/response flow; choose model and usage limits |
 | Supabase | Project access, a read-only SQL query, and authentication-configuration access verified. Browser/server client factories exist. | App login/session refresh, user-scoped repositories, and an applied schema |
-| Data model | Draft migration for profiles, conversations, messages, memory proposals, memories, and social actions; 24 isolated PostgreSQL behavior checks pass. | Revise tables to match chosen features; verify real Supabase Auth/Data API behavior and concurrency before application |
+| Data model | Draft migration for profiles, conversations, messages, memory proposals, memories, and social actions; 37 isolated PostgreSQL behavior checks pass, including expiry and input-bound regressions. | Revise tables to match chosen features; verify real Supabase Auth/Data API behavior and concurrency before application |
 | Vercel | Hosting choice settled and API token verified. | Create the hosting project, set application environment variables, and deploy; no deployment has been performed |
 | GitHub | Repository access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
-| Contracts and boundaries | Zod request/event schemas, domain interfaces, environment validation, and provider factories are written. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
+| Contracts and boundaries | Zod request/event schemas, domain interfaces, validated runtime/build configuration, and provider factories; contract and configuration regression checks. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
 
 The model client factory does not implement chat. The Supabase factories do not
@@ -40,17 +40,28 @@ application; normal startup makes no Anthropic or Supabase calls.
 
 ### Verified baseline
 
-At foundation commit `9f39a7e`, the following passed locally and the automated
-[GitHub checks passed](https://github.com/RaegenDyer/Dartmouth-Hackathon/actions/runs/41150082460):
+The October 30 foundation review adds stricter stored-text validation, wall-clock
+memory-approval expiry checks, bounded database fields/interests, and public
+configuration validation before bundling. The Anthropic client fixes the official
+endpoint and disables SDK request logging. Existing generated visual proposals
+and the pending collaborator style decision remain as documented above.
+
+Current local verification:
 
 - Clean dependency installation with `npm ci`.
-- `npm run check`: lint, TypeScript, and 24 isolated database checks.
+- `npm run check`: lint, TypeScript, 9 contract checks, 10 runtime/configuration
+  checks, and 37 isolated database checks. These require no service credentials.
 - `npm run build`: production build.
+- `npm audit`: zero reported vulnerabilities after updating the lint toolchain's
+  transitive `minimatch` dependency through a pinned override.
 - Local production-server smoke checks: preparation page and health endpoint
-  succeed; the unimplemented chat endpoint returns 404.
+  succeed, unsupported health writes return 405, and the unimplemented chat
+  endpoint returns 404.
 
-CI covers dependency installation, `npm run check`, and the build. The
-production-server smoke checks were run locally.
+CI covers dependency installation, dependency audit, `npm run check`, and the
+build. The production-server smoke checks were run locally. The original
+foundation commit `9f39a7e` also has a recorded
+[successful CI baseline](https://github.com/RaegenDyer/Dartmouth-Hackathon/actions/runs/41150082460).
 
 Database checks use an in-memory PGlite/PostgreSQL runtime with synthetic users
 and simplified Supabase identity/role stubs. They do not test hosted JWTs, the
@@ -107,7 +118,7 @@ settings when working on those integrations. See [contributor setup](CONTRIBUTIN
 | Data and identity | Supabase Postgres and Auth | Selected services for user-owned data and identity; app integration remains to be built |
 | Conversation model | Anthropic API through its official SDK | Server-only client factory exists; generation endpoint remains to be built |
 | Shared contracts | Zod and TypeScript | Draft request validation and stream-event shapes |
-| Quality checks | ESLint, TypeScript, isolated Postgres checks, production build, GitHub Actions | Implemented baseline that works without service credentials |
+| Quality checks | ESLint, TypeScript, contract/configuration regressions, isolated Postgres checks, dependency audit, production build, GitHub Actions | Implemented baseline that works without service credentials |
 
 Start with [architecture](docs/architecture.md), [API contracts](docs/api-contracts.md),
 [data model](docs/data-model.md), and the [implementation backlog](docs/implementation-plan.md).

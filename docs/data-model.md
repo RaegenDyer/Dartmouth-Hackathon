@@ -25,7 +25,7 @@ erDiagram
 | `memories` | Facts an authenticated user explicitly approved | `content`, `source_proposal_id`, `approved_at`, `expires_at`, `version` |
 | `social_actions` | A suggestion the user can accept, complete, or dismiss | `title`, `description`, `status`, `due_at`, `completed_at`, `version` |
 
-IDs are UUIDs and times are `timestamptz`. Expose camelCase objects at the HTTP boundary while keeping these database column names. Text and array sizes have database bounds; API validation must additionally check each interest, reject unknown fields, and enforce the smaller per-request limits it needs.
+IDs are UUIDs and times are `timestamptz`. Expose camelCase objects at the HTTP boundary while keeping these database column names. Text upper bounds count the full stored value, including padding. Profile interests must be a one-dimensional array of at most 20 nonnull, nonblank strings of at most 60 characters each. API validation must also reject unknown fields and enforce its smaller per-request limits (currently at most 12 interests).
 
 ## Ownership and authorization
 
@@ -38,7 +38,7 @@ The database cannot prove whether a UI click was a human's intention. The server
 ## Memory lifecycle
 
 1. A chat response may produce a pending proposal with a source message. It is shown separately from saved memory. The initial default review window is 24 hours and is open to revision.
-2. `accept_memory_proposal(p_proposal_id, p_content, p_expires_at, p_expected_version)` locks the owned proposal and checks it is pending and unexpired. It stores the user-reviewed content and optional memory expiry in one transaction.
+2. `accept_memory_proposal(p_proposal_id, p_content, p_expires_at, p_expected_version)` locks the owned proposal and checks it is pending and unexpired. It checks proposal and requested memory expiry against the actual decision time after acquiring the lock, rather than transaction-start `now()`, and records that time as `approved_at`. It stores the user-reviewed content and optional memory expiry in one transaction. PostgreSQL distinguishes [wall-clock time from transaction-start time](https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-CURRENT).
 3. Acceptance marks the proposal resolved and clears its duplicate suggested text. Retrying the same acceptance returns the existing memory. If the user later deletes that memory, retrying the old acceptance does not recreate it.
 4. `reject_memory_proposal(p_proposal_id, p_expected_version)` resolves the proposal and clears its suggested text. Expired pending proposals remain stored until a cleanup policy is implemented, but must not be presented as actionable suggestions.
 5. Users edit approved content/expiry or delete the approved row. The UI must show success only after the database confirms the write. Delete the corresponding pending UI state as well.

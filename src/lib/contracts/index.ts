@@ -4,7 +4,13 @@ const id = z.uuid();
 const version = z.number().int().positive();
 const contextEpoch = z.number().int().nonnegative();
 const timestamp = z.iso.datetime({ offset: true });
-const memoryContent = z.string().trim().min(1).max(500);
+// JSON permits NUL and lone UTF-16 surrogates, but PostgreSQL UTF-8 text does not.
+// Reject them before persistence; the Unicode regex still allows valid emoji.
+const persistedText = z.string().trim().refine(
+  (value) => !value.includes("\u0000") && !/[\uD800-\uDFFF]/u.test(value),
+  { message: "Text must be valid Unicode without null characters." },
+);
+const memoryContent = persistedText.min(1).max(500);
 
 export const scenarioSchema = z.enum(["check_in", "social_step"]);
 export const socialActionStatusSchema = z.enum([
@@ -15,21 +21,21 @@ export const socialActionStatusSchema = z.enum([
 // Strict objects reject client-supplied userId, role, and fabricated history.
 export const createConversationSchema = z.strictObject({
   scenario: scenarioSchema,
-  title: z.string().trim().min(1).max(120).optional(),
+  title: persistedText.min(1).max(120).optional(),
 });
 
 export const sendMessageSchema = z.strictObject({
   conversationId: id,
   clientRequestId: id,
-  content: z.string().trim().min(1).max(4000),
+  content: persistedText.min(1).max(4000),
 });
 
 export const updateProfileSchema = z.strictObject({
   expectedVersion: version,
-  displayName: z.string().trim().max(80),
-  city: z.string().trim().max(120),
-  interests: z.array(z.string().trim().min(1).max(60)).max(12),
-  tone: z.string().trim().min(1).max(60),
+  displayName: persistedText.max(80),
+  city: persistedText.max(120),
+  interests: z.array(persistedText.min(1).max(60)).max(12),
+  tone: persistedText.min(1).max(60),
 });
 
 export const approveMemorySchema = z.strictObject({

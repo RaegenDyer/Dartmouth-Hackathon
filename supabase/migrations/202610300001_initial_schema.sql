@@ -2,12 +2,26 @@
 -- database before applying to the shared project. No extension is required.
 begin;
 
+-- Bound every stored interest, including direct Data API writes. Array count
+-- alone would still permit arbitrarily large values or null elements.
+create function public.valid_profile_interests(p_interests text[])
+returns boolean language sql immutable strict set search_path = '' as $$
+  select cardinality(p_interests) <= 20
+    and (cardinality(p_interests) = 0 or array_ndims(p_interests) = 1)
+    and not exists (
+      select 1 from unnest(p_interests) as item(value)
+      where value is null or char_length(value) > 60 or btrim(value) = ''
+    );
+$$;
+revoke all on function public.valid_profile_interests(text[]) from public, anon;
+grant execute on function public.valid_profile_interests(text[]) to authenticated, service_role;
+
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null default '' check (char_length(display_name) <= 80),
   city text not null default '' check (char_length(city) <= 120),
-  interests text[] not null default '{}' check (cardinality(interests) <= 20),
-  tone text not null default 'warm' check (char_length(btrim(tone)) between 1 and 60),
+  interests text[] not null default '{}' check (public.valid_profile_interests(interests)),
+  tone text not null default 'warm' check (char_length(tone) <= 60 and btrim(tone) <> ''),
   memory_revision bigint not null default 0 check (memory_revision >= 0),
   version bigint not null default 1 check (version > 0),
   created_at timestamptz not null default now(),
@@ -17,7 +31,7 @@ create table public.profiles (
 create table public.conversations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  title text not null default 'A conversation' check (char_length(btrim(title)) between 1 and 120),
+  title text not null default 'A conversation' check (char_length(title) <= 120 and btrim(title) <> ''),
   scenario text not null default 'check_in'
     check (scenario in ('check_in', 'social_step')),
   status text not null default 'active' check (status in ('active', 'archived')),
@@ -33,7 +47,7 @@ create table public.messages (
   user_id uuid not null references auth.users(id) on delete cascade,
   conversation_id uuid not null,
   role text not null check (role in ('user', 'assistant')),
-  content text not null check (char_length(btrim(content)) between 1 and 12000),
+  content text not null check (char_length(content) <= 12000 and btrim(content) <> ''),
   client_request_id uuid not null,
   context_epoch bigint not null default 0 check (context_epoch >= 0),
   created_at timestamptz not null default now(),
@@ -50,7 +64,7 @@ create table public.memory_proposals (
   conversation_id uuid not null,
   source_message_id uuid,
   suggested_content text
-    check (suggested_content is null or char_length(btrim(suggested_content)) between 1 and 1000),
+    check (suggested_content is null or (char_length(suggested_content) <= 1000 and btrim(suggested_content) <> '')),
   status text not null default 'pending' check (status in ('pending', 'accepted', 'rejected')),
   expires_at timestamptz not null default (now() + interval '24 hours'),
   decided_at timestamptz,
@@ -73,7 +87,7 @@ create table public.memory_proposals (
 create table public.memories (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  content text not null check (char_length(btrim(content)) between 1 and 1000),
+  content text not null check (char_length(content) <= 1000 and btrim(content) <> ''),
   source_proposal_id uuid unique,
   approved_at timestamptz not null default now(),
   expires_at timestamptz,
@@ -90,8 +104,8 @@ create table public.social_actions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   conversation_id uuid,
-  title text not null check (char_length(btrim(title)) between 1 and 120),
-  description text not null check (char_length(btrim(description)) between 1 and 2000),
+  title text not null check (char_length(title) <= 120 and btrim(title) <> ''),
+  description text not null check (char_length(description) <= 2000 and btrim(description) <> ''),
   status text not null default 'proposed'
     check (status in ('proposed', 'accepted', 'completed', 'dismissed')),
   due_at timestamptz,
@@ -312,6 +326,7 @@ declare
   actor_id uuid := auth.uid();
   proposal public.memory_proposals;
   saved_memory public.memories;
+  decision_time timestamptz;
 begin
   if actor_id is null then raise exception 'authentication_required' using errcode = '42501'; end if;
   if p_expected_version is null then raise exception 'expected_version_required' using errcode = '22023'; end if;
@@ -325,17 +340,20 @@ begin
     raise exception 'accepted_memory_was_deleted' using errcode = 'P0001';
   end if;
   if proposal.status <> 'pending' then raise exception 'proposal_already_resolved' using errcode = 'P0001'; end if;
-  if proposal.expires_at <= now() then raise exception 'proposal_expired' using errcode = 'P0001'; end if;
+  -- now() is fixed at transaction start and can precede a long row-lock wait.
+  -- Check the actual decision time after acquiring the proposal lock.
+  decision_time := clock_timestamp();
+  if proposal.expires_at <= decision_time then raise exception 'proposal_expired' using errcode = 'P0001'; end if;
   if p_expected_version <> proposal.version then
     raise exception 'stale_proposal_version' using errcode = '40001';
   end if;
-  if p_expires_at is not null and p_expires_at <= now() then
+  if p_expires_at is not null and p_expires_at <= decision_time then
     raise exception 'memory_expiry_must_be_future' using errcode = '22023';
   end if;
-  insert into public.memories(user_id, content, source_proposal_id, expires_at)
-    values (actor_id, btrim(coalesce(p_content, proposal.suggested_content)), proposal.id, p_expires_at)
+  insert into public.memories(user_id, content, source_proposal_id, expires_at, approved_at)
+    values (actor_id, btrim(coalesce(p_content, proposal.suggested_content)), proposal.id, p_expires_at, decision_time)
     returning * into saved_memory;
-  update public.memory_proposals set status = 'accepted', suggested_content = null, decided_at = now()
+  update public.memory_proposals set status = 'accepted', suggested_content = null, decided_at = decision_time
     where id = proposal.id;
   return saved_memory;
 end;

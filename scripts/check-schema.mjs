@@ -41,14 +41,22 @@ try {
   await actor(A);
   assert.equal((await db.query('select count(*)::int as n from public.profiles')).rows[0].n, 1);
   pass('RLS exposes only current user profile');
+  await expectError('oversized padded profile tone rejected', 'update public.profiles set tone=$1 where id=$2', ['warm' + ' '.repeat(60), A], ['23514']);
+  await expectError('oversized profile interest rejected', 'update public.profiles set interests=$1 where id=$2', [['h'.repeat(61)], A], ['23514']);
+  await expectError('null profile interest rejected', 'update public.profiles set interests=array[null]::text[] where id=$1', [A], ['23514']);
+  await expectError('blank profile interest rejected', 'update public.profiles set interests=$1 where id=$2', [['   '], A], ['23514']);
+  await expectError('multidimensional interests rejected', "update public.profiles set interests=array[['hiking','music']] where id=$1", [A], ['23514']);
   const ca = (await db.query('insert into public.conversations(user_id) values ($1) returning id', [A])).rows[0].id;
+  await expectError('oversized padded conversation title rejected', 'update public.conversations set title=$1 where id=$2', ['A chat' + ' '.repeat(120), ca], ['23514']);
   await actor(B);
   const cb = (await db.query('insert into public.conversations(user_id) values ($1) returning id', [B])).rows[0].id;
   await actor(A);
   assert.equal((await db.query('select * from public.conversations where id = $1', [cb])).rows.length, 0);
   pass('cross-user conversation read returns no rows');
   await expectError('cross-user conversation attachment denied', 'insert into public.messages(user_id,conversation_id,role,content,client_request_id) values ($1,$2,$3,$4,$5)', [A, cb, 'user', 'test', requestId], ['P0002','23503','42501']);
+  await expectError('oversized padded message rejected', 'insert into public.messages(user_id,conversation_id,role,content,client_request_id) values ($1,$2,$3,$4,$5)', [A, ca, 'user', 'hello' + ' '.repeat(12000), requestId], ['23514']);
   const ma = (await db.query('insert into public.messages(user_id,conversation_id,role,content,client_request_id) values ($1,$2,$3,$4,$5) returning id', [A, ca, 'user', 'I like hiking.', requestId])).rows[0].id;
+  await expectError('oversized padded proposal rejected', 'insert into public.memory_proposals(user_id,conversation_id,suggested_content) values ($1,$2,$3)', [A, ca, 'Hikes.' + ' '.repeat(1000)], ['23514']);
   const p1 = (await db.query('insert into public.memory_proposals(user_id,conversation_id,source_message_id,suggested_content) values ($1,$2,$3,$4) returning id', [A, ca, ma, 'I like hiking.'])).rows[0].id;
   await expectError('direct approved-memory insertion denied', 'insert into public.memories(user_id,content) values ($1,$2)', [A, 'unapproved'], ['42501']);
   await expectError('direct proposal status mutation denied', 'update public.memory_proposals set status = $1 where id = $2', ['accepted', p1], ['42501']);
@@ -62,6 +70,7 @@ try {
   assert.equal(retry.id, saved.id);
   assert.equal((await db.query('select count(*)::int as n from public.memories')).rows[0].n, 1);
   pass('approval retry returns same memory');
+  await expectError('oversized padded approved-memory edit rejected', 'update public.memories set content=$1 where id=$2', ['Hikes.' + ' '.repeat(1000), saved.id], ['23514']);
   await expectError('stale assistant context rejected', 'insert into public.messages(user_id,conversation_id,role,content,client_request_id,context_epoch) values ($1,$2,$3,$4,$5,0)', [A, ca, 'assistant', 'old answer', requestId], ['40001']);
   await expectError('duplicate user turn rejected', 'insert into public.messages(user_id,conversation_id,role,content,client_request_id,context_epoch) values ($1,$2,$3,$4,$5,1)', [A, ca, 'user', 'retry', requestId], ['23505']);
   await actor(B);
@@ -73,6 +82,8 @@ try {
   pass('memory edit increments revision and optimistic version');
   await db.query('delete from public.memories where id=$1', [saved.id]);
   await expectError('retry cannot resurrect deleted approved memory', 'select * from public.accept_memory_proposal($1,null,null,1)', [p1], ['P0001']);
+  await expectError('oversized padded action title rejected', 'insert into public.social_actions(user_id,conversation_id,title,description) values ($1,$2,$3,$4)', [A, ca, 'Hello' + ' '.repeat(120), 'Ask about lunch.'], ['23514']);
+  await expectError('oversized padded action description rejected', 'insert into public.social_actions(user_id,conversation_id,title,description) values ($1,$2,$3,$4)', [A, ca, 'Hello', 'Ask about lunch.' + ' '.repeat(2000)], ['23514']);
   const action = (await db.query('insert into public.social_actions(user_id,conversation_id,title,description) values ($1,$2,$3,$4) returning id', [A, ca, 'Say hello', 'Ask a classmate about lunch.'])).rows[0].id;
   await expectError('proposed action cannot skip acceptance', 'select * from public.transition_social_action($1,$2,1)', [action, 'completed'], ['22023']);
   await db.query('select * from public.transition_social_action($1,$2,1)', [action, 'accepted']);
@@ -98,6 +109,19 @@ try {
   await db.query("update public.memory_proposals set created_at=now()-interval '2 days', expires_at=now()-interval '1 day' where id=$1", [exp]);
   await actor(A);
   await expectError('expired proposal cannot be approved', 'select * from public.accept_memory_proposal($1,null,null,1)', [exp], ['P0001']);
+  // Explicit transactions reproduce time passing after transaction start (as
+  // with a lock wait) without pretending to test concurrent network requests.
+  await db.exec('begin');
+  const lateProposal = (await db.query("insert into public.memory_proposals(user_id,conversation_id,suggested_content,expires_at) values ($1,$2,$3,clock_timestamp()+interval '10 milliseconds') returning id", [A, ca, 'Approval arrived late.'])).rows[0].id;
+  await new Promise(resolve => setTimeout(resolve, 50));
+  await expectError('proposal expiry checked at decision time instead of transaction start', 'select * from public.accept_memory_proposal($1,null,null,1)', [lateProposal], ['P0001']);
+  await db.exec('rollback');
+  const lateMemory = (await db.query('insert into public.memory_proposals(user_id,conversation_id,suggested_content) values ($1,$2,$3) returning id', [A, ca, 'Memory expiry arrived late.'])).rows[0].id;
+  await db.exec('begin');
+  const deadline = (await db.query("select clock_timestamp()+interval '10 milliseconds' as expiry")).rows[0].expiry;
+  await new Promise(resolve => setTimeout(resolve, 50));
+  await expectError('memory expiry checked at decision time instead of transaction start', 'select * from public.accept_memory_proposal($1,null,$2,1)', [lateMemory, deadline], ['22023']);
+  await db.exec('rollback');
   await db.query('delete from public.conversations where id=$1', [ca]);
   assert.equal((await db.query('select * from public.messages')).rows.length, 0);
   assert.equal((await db.query('select * from public.memory_proposals')).rows.length, 0);

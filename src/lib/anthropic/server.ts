@@ -7,6 +7,9 @@ export function createConversationModelClient() {
   return {
     client: new Anthropic({
       apiKey: environment.ANTHROPIC_API_KEY,
+      // Do not inherit ambient SDK overrides that redirect keys or log chat bodies.
+      baseURL: "https://api.anthropic.com",
+      logLevel: "off",
       maxRetries: 0,
       timeout: 45_000,
     }),

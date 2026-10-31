@@ -12,7 +12,7 @@ After installing the repository dependencies, run:
 npm run check:schema
 ```
 
-`scripts/check-schema.mjs` runs the migration and 24 focused checks against an in-memory PGlite PostgreSQL instance. It reads only the migration file, creates synthetic users and test data, and closes the database when finished. It neither loads credentials nor contacts Supabase or another remote service. The test dependency is pinned to PGlite `0.5.13`.
+`scripts/check-schema.mjs` runs the migration and 37 focused checks against an in-memory PGlite PostgreSQL instance. It reads only the migration file, creates synthetic users and test data, and closes the database when finished. It neither loads credentials nor contacts Supabase or another remote service. The test dependency is pinned to PGlite `0.5.13`. Regression checks include whitespace-padded text limits, bounded profile interests, and expiry passing during an explicit transaction.
 
 The harness supplies minimal `auth.users`, `auth.uid()`, and database-role stubs. Passing these checks verifies the exercised SQL behavior; it does not validate real Supabase JWTs, Auth signup behavior, the Data API, or concurrent requests. The designated development-project checks below remain necessary before applying the migration to the shared project.
 
@@ -35,6 +35,8 @@ The harness supplies minimal `auth.users`, `auth.uid()`, and database-role stubs
 | User A creates a pending proposal | Visible to A; absent from approved memories |
 | A inserts directly into `memories` or sets proposal status directly | Permission denied |
 | A explicitly accepts their unexpired proposal via RPC | Exactly one approved memory is created; proposal text is cleared |
+| A transaction waits past proposal or requested memory expiry before approval | Rejected using the actual decision time, even if the transaction began before expiry |
+| A writes oversized whitespace-padded text or invalid profile interests | Rejected by database constraints as well as API validation |
 | Repeat the same acceptance request | Existing memory returned; no second insert |
 | Accept a rejected, expired, foreign, or deleted-memory proposal | Rejected; no resurrection or new memory |
 | Update/delete an approved memory | `memory_revision` and conversation epochs increment |
