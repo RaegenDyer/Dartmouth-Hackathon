@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { OPENING_MESSAGE } from "@/lib/companion/boundary/rules";
 import { greeting } from "@/lib/ui/greeting";
+import { splitStep } from "@/lib/ui/step";
 import { MessageText } from "./message-text";
 
 /** MB-6. The server enforces the same limit. */
@@ -20,7 +21,10 @@ interface Message {
   role: "user" | "assistant";
   text: string;
   crisis?: CrisisView | null;
+  /** Memory suggestions that came from this reply, shown as in-chat cards. */
+  proposals?: Proposal[];
 }
+type Tab = "chat" | "memories" | "history";
 /** Candid speaks first; the server saves the same text when the conversation starts. */
 const OPENING: Message = { id: "opening", role: "assistant", text: OPENING_MESSAGE };
 
@@ -113,6 +117,10 @@ export function CompanionApp() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [confirmDeleteConversation, setConfirmDeleteConversation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Phone layout: which section fills the screen. Desktop shows all three. */
+  const [tab, setTab] = useState<Tab>("chat");
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [laterIds, setLaterIds] = useState<Set<string>>(new Set());
   const logRef = useRef<HTMLDivElement>(null);
 
   const resetChat = useCallback(() => {
@@ -192,6 +200,7 @@ export function CompanionApp() {
   }, [loadConversations, loadSpace]);
 
   function newConversation() {
+    setTab("chat");
     setConversationId(null);
     setMessages([OPENING]);
     setEnded(false);
@@ -213,6 +222,7 @@ export function CompanionApp() {
     };
     setConversationId(id);
     setMessages(body.messages);
+    setTab("chat");
     setEnded(body.conversation.ended);
   }
 
@@ -310,7 +320,13 @@ export function CompanionApp() {
       setMessages((current) => [
         ...current.filter((message) => message.id !== clientRequestId),
         { id: clientRequestId, role: "user", text: content },
-        { id: `${clientRequestId}-reply`, role: "assistant", text: result.reply, crisis: result.crisis },
+        {
+          id: `${clientRequestId}-reply`,
+          role: "assistant",
+          text: result.reply,
+          crisis: result.crisis,
+          proposals: result.memoryProposals,
+        },
       ]);
       if (result.conversationEnded) setEnded(true);
       if (result.memoryProposals.length) setProposals((current) => [...current, ...result.memoryProposals]);
@@ -343,6 +359,7 @@ export function CompanionApp() {
     const { memory } = (await response.json()) as { memory: SavedMemory };
     setProposals((current) => current.filter((item) => item.id !== proposal.id));
     setMemories((current) => [memory, ...current]);
+    setSavedIds((current) => new Set(current).add(proposal.id));
   }
 
   async function dismissProposal(proposal: Proposal) {
@@ -430,81 +447,144 @@ export function CompanionApp() {
     );
   }
 
+  const pendingCount = proposals.length;
+  const showMemories = () => {
+    setTab("memories");
+    document.getElementById("space-title")?.scrollIntoView({ block: "nearest" });
+  };
+
+  function InlineProposal({ proposal }: { proposal: Proposal }) {
+    if (savedIds.has(proposal.id)) {
+      return (
+        <p className="card remember done" role="status">
+          <span className="label">saved to memories</span>
+          {proposal.text}
+        </p>
+      );
+    }
+    if (laterIds.has(proposal.id) || !proposals.some((item) => item.id === proposal.id)) return null;
+    return (
+      <div className="card remember" role="group" aria-label="Memory suggestion">
+        <span className="label">want me to remember this?</span>
+        <p>{proposal.text}</p>
+        <div className="actions">
+          <button
+            type="button"
+            className="soft small save"
+            onClick={() => void saveProposal(proposal)}
+            aria-label={`Save memory: ${proposal.text}`}
+          >
+            save
+          </button>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={() => setLaterIds((current) => new Set(current).add(proposal.id))}
+          >
+            not now
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const conversationList = (
+    <section className="history" aria-labelledby="history-title">
+      <h2 id="history-title" className="label">
+        Your conversations
+      </h2>
+      <p className="fine-print" id="history-note">
+        Conversations are saved so you can come back to them. You can delete any conversation, or all your data, at any
+        time.
+      </p>
+      {conversations.length === 0 ? (
+        <p className="empty">Your conversations will appear here after you send a message.</p>
+      ) : (
+        <ul>
+          {conversations.map((item) => {
+            const label = item.title ?? "Conversation";
+            const when = dateFormat.format(new Date(item.startedAt));
+            return (
+              <li key={item.id} className={item.id === conversationId ? "current" : undefined}>
+                {confirmDeleteConversation === item.id ? (
+                  <div className="confirm" role="group" aria-label={`Confirm deleting ${label}`}>
+                    <p>Delete this conversation? This can&apos;t be undone.</p>
+                    <div className="actions">
+                      <button type="button" className="danger small" onClick={() => void deleteConversation(item.id)}>
+                        delete
+                      </button>
+                      <button type="button" className="ghost small" onClick={() => setConfirmDeleteConversation(null)}>
+                        cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="history-open"
+                      aria-current={item.id === conversationId ? "true" : undefined}
+                      onClick={() => void openConversation(item.id)}
+                    >
+                      <span className="history-title">{label}</span>
+                      <span className="history-date">{when}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost small"
+                      aria-label={`Delete conversation: ${label}`}
+                      onClick={() => setConfirmDeleteConversation(item.id)}
+                    >
+                      delete
+                    </button>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+
   return (
-    <div className="shell">
-      <aside className="sidebar">
+    <div className="shell" data-tab={tab}>
+      {/* CD-2: visible on every signed-in screen, including each phone tab. */}
+      <p className="poc-notice" role="note">
+        <span className="pill label">proof of concept</span>
+        <span className="poc-long">
+          Candid is an AI companion, not a person or a clinical service. Replies can be wrong.
+        </span>
+        <span className="poc-short">An AI, not a person or clinical service.</span>
+      </p>
+
+      <aside className="rail" aria-label="Conversations and account">
         <Wordmark />
         <button type="button" className="primary" onClick={newConversation}>
           new conversation
         </button>
-        <nav className="history" aria-labelledby="history-title">
-          <h2 id="history-title" className="label">
-            Your conversations
-          </h2>
-          <p className="fine-print" id="history-note">
-            Conversations are saved so you can come back to them. You can delete any conversation, or all your data, at
-            any time.
-          </p>
-          {conversations.length === 0 ? (
-            <p className="empty">Your conversations will appear here after you send a message.</p>
-          ) : (
-            <ul>
-              {conversations.map((item) => {
-                const label = item.title ?? "Conversation";
-                const when = dateFormat.format(new Date(item.startedAt));
-                return (
-                  <li key={item.id} className={item.id === conversationId ? "current" : undefined}>
-                    {confirmDeleteConversation === item.id ? (
-                      <div className="confirm" role="group" aria-label={`Confirm deleting ${label}`}>
-                        <p>Delete this conversation? This can&apos;t be undone.</p>
-                        <button type="button" className="danger small" onClick={() => void deleteConversation(item.id)}>
-                          delete
-                        </button>
-                        <button
-                          type="button"
-                          className="quiet small"
-                          onClick={() => setConfirmDeleteConversation(null)}
-                        >
-                          cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="history-open"
-                          aria-current={item.id === conversationId ? "true" : undefined}
-                          onClick={() => void openConversation(item.id)}
-                        >
-                          <span className="history-title">{label}</span>
-                          <span className="history-date">{when}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="quiet small"
-                          aria-label={`Delete conversation: ${label}`}
-                          onClick={() => setConfirmDeleteConversation(item.id)}
-                        >
-                          delete
-                        </button>
-                      </>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+        <nav className="rail-nav" aria-label="Sections">
+          <button type="button" className="rail-link on" onClick={() => setTab("chat")}>
+            chat
+          </button>
+          <button type="button" className="rail-link" onClick={showMemories}>
+            memories
+            {pendingCount > 0 && <span className="count">{pendingCount} new</span>}
+          </button>
         </nav>
-        <div className="sidebar-end">
+        {conversationList}
+        <div className="rail-end">
           {confirmDelete ? (
             <div className="confirm" role="group" aria-label="Confirm data deletion">
               <p>Delete all your conversations, memories, and suggestions? This can&apos;t be undone.</p>
-              <button type="button" className="danger small" onClick={() => void deleteMyData()}>
-                delete everything
-              </button>
-              <button type="button" className="quiet small" onClick={() => setConfirmDelete(false)}>
-                cancel
-              </button>
+              <div className="actions">
+                <button type="button" className="danger small" onClick={() => void deleteMyData()}>
+                  delete everything
+                </button>
+                <button type="button" className="ghost small" onClick={() => setConfirmDelete(false)}>
+                  cancel
+                </button>
+              </div>
             </div>
           ) : (
             <button type="button" className="link" onClick={() => setConfirmDelete(true)}>
@@ -517,13 +597,11 @@ export function CompanionApp() {
         </div>
       </aside>
 
-      <main className="today">
-        {/* CD-2 */}
-        <p className="poc-notice" role="note">
-          <span className="pill label">proof of concept</span>
-          Candid is an AI companion, not a person or a clinical service. Replies can be wrong.
-        </p>
+      <main className="chat-pane">
         <header className="today-header">
+          <div className="mobile-brand">
+            <Wordmark />
+          </div>
           <span className="label">{dayFormat.format(new Date())}</span>
           <h1>
             {hello}
@@ -531,183 +609,203 @@ export function CompanionApp() {
           </h1>
         </header>
 
-        <div className="today-grid">
-          <section className="card chat" aria-label="Conversation">
-            <div className="log" role="log" aria-live="polite" ref={logRef}>
-              {messages.length === 0 && (
-                <p className="empty">
-                  Share how your day went, or anything on your mind. I&apos;m an AI, not a person.
-                </p>
-              )}
-              {messages.map((message) => (
-                <div key={message.id} className={`bubble ${message.role}${message.crisis ? " crisis" : ""}`}>
-                  <span className="sr-only">{message.role === "user" ? "You said:" : "Candid said:"}</span>
-                  {message.role === "assistant" && (
-                    <span className="label who" aria-hidden="true">
-                      candid
-                    </span>
-                  )}
-                  <MessageText text={message.text} />
-                  {message.crisis && (
-                    <div className="crisis-detail">
-                      <ul>
-                        {message.crisis.resources.map((resource) => (
-                          <li key={resource.label}>
-                            <strong>{resource.label}:</strong> {resource.contact}
-                          </li>
-                        ))}
-                      </ul>
-                      {message.crisis.emergencyContact && (
-                        <p>
-                          {[
-                            message.crisis.emergencyContact.name,
-                            message.crisis.emergencyContact.relationship,
-                            message.crisis.emergencyContact.phoneOrEmail,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                          <br />
-                          {message.crisis.contactNote}
-                        </p>
-                      )}
+        <section className="chat" aria-label="Conversation">
+          <div className="log" role="log" aria-live="polite" ref={logRef}>
+            {messages.map((message) => {
+              const { body, step } =
+                message.role === "assistant" && !message.crisis
+                  ? splitStep(message.text)
+                  : { body: message.text, step: null };
+              return (
+                <div key={message.id} className="turn">
+                  <div className={`bubble ${message.role}${message.crisis ? " crisis" : ""}`}>
+                    <span className="sr-only">{message.role === "user" ? "You said:" : "Candid said:"}</span>
+                    {message.role === "assistant" && (
+                      <span className="label who" aria-hidden="true">
+                        candid
+                      </span>
+                    )}
+                    <MessageText text={body} />
+                    {message.crisis && (
+                      <div className="crisis-detail">
+                        <ul>
+                          {message.crisis.resources.map((resource) => (
+                            <li key={resource.label}>
+                              <strong>{resource.label}:</strong> {resource.contact}
+                            </li>
+                          ))}
+                        </ul>
+                        {message.crisis.emergencyContact && (
+                          <p>
+                            {[
+                              message.crisis.emergencyContact.name,
+                              message.crisis.emergencyContact.relationship,
+                              message.crisis.emergencyContact.phoneOrEmail,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                            <br />
+                            {message.crisis.contactNote}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {step && (
+                    <div className="card step">
+                      <span className="label">one small step this week</span>
+                      <p>{step}</p>
+                      <span className="fine-print">Only if it sounds good. No pressure either way.</span>
                     </div>
                   )}
+                  {message.proposals?.map((proposal) => (
+                    <InlineProposal key={proposal.id} proposal={proposal} />
+                  ))}
                 </div>
-              ))}
-              {sending && <p className="typing">Candid is replying…</p>}
+              );
+            })}
+            {sending && <p className="typing">Candid is replying…</p>}
+          </div>
+
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+
+          {ended ? (
+            <div className="ended">
+              <p>This conversation has ended.</p>
+              <button type="button" className="primary" onClick={newConversation}>
+                start a new conversation
+              </button>
             </div>
-
-            {error && (
-              <p className="error" role="alert">
-                {error}
+          ) : (
+            <form className="composer" onSubmit={(event) => void send(event)}>
+              <label htmlFor="message" className="sr-only">
+                Write a message
+              </label>
+              <textarea
+                id="message"
+                rows={1}
+                maxLength={MAX_MESSAGE}
+                placeholder="tell Candid about your day…"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={onComposerKey}
+                aria-describedby="message-hint"
+              />
+              <button type="submit" className="primary send" disabled={sending || !draft.trim()}>
+                send
+              </button>
+              <p id="message-hint" className="hint">
+                Enter to send, Shift+Enter for a new line.
+                {draft.length > MAX_MESSAGE - 100 && ` ${MAX_MESSAGE - draft.length} characters left.`}
               </p>
-            )}
+            </form>
+          )}
+        </section>
+      </main>
 
-            {ended ? (
-              <div className="ended">
-                <p>This conversation has ended.</p>
-                <button type="button" className="primary" onClick={newConversation}>
-                  start a new conversation
-                </button>
-              </div>
-            ) : (
-              <form className="composer" onSubmit={(event) => void send(event)}>
-                <label htmlFor="message" className="sr-only">
-                  Write a message
+      <aside className="space" aria-labelledby="space-title">
+        <span className="label">your space</span>
+        <h2 id="space-title">what Candid remembers</h2>
+        <p className="fine-print">Only what you choose to save. Delete anything, anytime.</p>
+
+        <h3>waiting for you</h3>
+        {proposals.length === 0 ? (
+          <p className="empty">
+            Nothing waiting. When you mention everyday facts, like where you live or what you enjoy, suggestions appear
+            in the chat and here. Nothing is remembered until you choose save.
+          </p>
+        ) : (
+          <ul className="items">
+            {proposals.map((proposal) => (
+              <li key={proposal.id} className="proposal">
+                <label htmlFor={`proposal-${proposal.id}`} className="sr-only">
+                  Suggested memory, editable
                 </label>
                 <textarea
-                  id="message"
+                  id={`proposal-${proposal.id}`}
                   rows={2}
-                  maxLength={MAX_MESSAGE}
-                  placeholder="write a message…"
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  onKeyDown={onComposerKey}
-                  aria-describedby="message-hint"
+                  value={edits[proposal.id] ?? proposal.text}
+                  maxLength={280}
+                  onChange={(event) => setEdits((current) => ({ ...current, [proposal.id]: event.target.value }))}
                 />
-                <button type="submit" className="primary" disabled={sending || !draft.trim()}>
-                  send
-                </button>
-                <p id="message-hint" className="hint label">
-                  Enter to send, Shift+Enter for a new line.
-                  {draft.length > MAX_MESSAGE - 100 && ` ${MAX_MESSAGE - draft.length} characters left.`}
-                </p>
-              </form>
-            )}
-          </section>
+                <label className="keep">
+                  <input
+                    type="checkbox"
+                    checked={keepChoices[proposal.id] ?? false}
+                    onChange={(event) =>
+                      setKeepChoices((current) => ({ ...current, [proposal.id]: event.target.checked }))
+                    }
+                  />{" "}
+                  Keep until I delete it (otherwise it expires automatically)
+                </label>
+                <div className="actions">
+                  <button type="button" className="soft small save" onClick={() => void saveProposal(proposal)}>
+                    save
+                  </button>
+                  <button type="button" className="ghost small" onClick={() => void dismissProposal(proposal)}>
+                    dismiss
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
 
-          <section className="card space" aria-labelledby="space-title">
-            <h2 id="space-title" className="label">
-              Your space
-            </h2>
+        <h3>saved</h3>
+        {memories.length === 0 ? (
+          <p className="empty">Nothing saved yet.</p>
+        ) : (
+          <ul className="items">
+            {memories.map((memory) => (
+              <li key={memory.id} className="memory">
+                <span className="label">
+                  <span className="dot" aria-hidden="true" />
+                  {memory.expiresAt
+                    ? ` expires ${dateFormat.format(new Date(memory.expiresAt))}`
+                    : " kept until you delete it"}
+                </span>
+                <span>{memory.text}</span>
+                <div className="actions">
+                  {memory.expiresAt && (
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={() => void keepMemory(memory)}
+                      aria-label={`Keep memory: ${memory.text}`}
+                    >
+                      keep
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={() => void deleteMemory(memory)}
+                    aria-label={`Delete memory: ${memory.text}`}
+                  >
+                    delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </aside>
 
-            <h3>suggested to remember</h3>
-            {proposals.length === 0 ? (
-              <p className="empty">
-                Nothing waiting. When you mention everyday facts, like where you live or what you enjoy, suggestions
-                appear here. Nothing is remembered until you choose Save.
-              </p>
-            ) : (
-              <ul className="items">
-                {proposals.map((proposal) => (
-                  <li key={proposal.id} className="proposal">
-                    <span className="label">suggested · from what you said</span>
-                    <label htmlFor={`proposal-${proposal.id}`} className="sr-only">
-                      Suggested memory, editable
-                    </label>
-                    <textarea
-                      id={`proposal-${proposal.id}`}
-                      rows={2}
-                      value={edits[proposal.id] ?? proposal.text}
-                      maxLength={280}
-                      onChange={(event) => setEdits((current) => ({ ...current, [proposal.id]: event.target.value }))}
-                    />
-                    <label className="keep">
-                      <input
-                        type="checkbox"
-                        checked={keepChoices[proposal.id] ?? false}
-                        onChange={(event) =>
-                          setKeepChoices((current) => ({ ...current, [proposal.id]: event.target.checked }))
-                        }
-                      />{" "}
-                      Keep until I delete it (otherwise it expires automatically)
-                    </label>
-                    <div className="actions">
-                      <button type="button" className="primary small" onClick={() => void saveProposal(proposal)}>
-                        save
-                      </button>
-                      <button type="button" className="quiet small" onClick={() => void dismissProposal(proposal)}>
-                        dismiss
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <h3>what I remember</h3>
-            {memories.length === 0 ? (
-              <p className="empty">Nothing saved yet.</p>
-            ) : (
-              <ul className="items">
-                {memories.map((memory) => (
-                  <li key={memory.id} className="memory">
-                    <div>
-                      <span>{memory.text}</span>
-                      <span className="expiry label">
-                        {memory.expiresAt
-                          ? `Expires ${dateFormat.format(new Date(memory.expiresAt))}`
-                          : "Kept until you delete it"}
-                      </span>
-                    </div>
-                    <div className="actions">
-                      {memory.expiresAt && (
-                        <button
-                          type="button"
-                          className="quiet small"
-                          onClick={() => void keepMemory(memory)}
-                          aria-label={`Keep memory: ${memory.text}`}
-                        >
-                          keep
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="quiet small"
-                        onClick={() => void deleteMemory(memory)}
-                        aria-label={`Delete memory: ${memory.text}`}
-                      >
-                        delete
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="fine-print">Saved memories stay until they expire or you delete them.</p>
-          </section>
-        </div>
-      </main>
+      <nav className="tabbar" aria-label="Sections">
+        <button type="button" aria-current={tab === "chat" ? "page" : undefined} onClick={() => setTab("chat")}>
+          chat
+        </button>
+        <button type="button" aria-current={tab === "memories" ? "page" : undefined} onClick={() => setTab("memories")}>
+          memories{pendingCount > 0 && <span className="count">{pendingCount}</span>}
+        </button>
+        <button type="button" aria-current={tab === "history" ? "page" : undefined} onClick={() => setTab("history")}>
+          history
+        </button>
+      </nav>
     </div>
   );
 }

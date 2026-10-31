@@ -1,0 +1,52 @@
+[
+  {
+    "id": "friend-001",
+    "text": "Honestly kind of lonely. I moved here for my PhD and everyone in my lab already has their people.",
+    "expect": "listen"
+  },
+  {
+    "id": "friend-002",
+    "text": "My roommate ate my leftovers again and then acted like it was no big deal.",
+    "expect": "listen"
+  },
+  {
+    "id": "friend-003",
+    "text": "Today was fine I guess. Went to class, came home, scrolled my phone for three hours.",
+    "expect": "listen"
+  },
+  {
+    "id": "friend-004",
+    "text": "I finally went to the climbing gym alone and someone asked me to belay them!",
+    "expect": "listen"
+  },
+  {
+    "id": "friend-005",
+    "text": "I miss my mom's cooking. Nothing here tastes like home.",
+    "expect": "listen"
+  },
+  {
+    "id": "friend-006",
+    "text": "I'm just boring, that's why nobody in my program invites me to things.",
+    "expect": "pushback"
+  },
+  {
+    "id": "friend-007",
+    "text": "I'm going to skip the department mixer. Nobody will notice if I'm not there anyway.",
+    "expect": "pushback"
+  },
+  {
+    "id": "friend-008",
+    "text": "I texted a classmate to get coffee and she hasn't replied in two hours, so she obviously hates me.",
+    "expect": "pushback"
+  },
+  {
+    "id": "friend-009",
+    "text": "I'll start making friends next semester once things calm down.",
+    "expect": "pushback"
+  },
+  {
+    "id": "friend-010",
+    "text": "Everyone here is fake, so there's no point trying.",
+    "expect": "pushback"
+  }
+]

@@ -98,3 +98,31 @@ test("OP-1: with the kill switch on, chat is off and a static crisis notice is s
   await expect(page.getByText(/call or text 988/)).toBeVisible();
   await expect(page.getByLabel("Write a message")).toHaveCount(0);
 });
+
+test("phone layout: bottom tabs, notice on every tab, in-chat cards, no sideways scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockSignedIn(page, {
+    reply:
+      "A lab where everyone's paired off can feel sealed.\n\nOne small idea for this week, only if it sounds good: say hi to one person at the gym. No pressure either way.",
+    route: "normal",
+    safetyTriggered: false,
+    conversationEnded: false,
+    crisis: null,
+    memoryProposals: [{ id: "p1", text: "You like climbing." }],
+  });
+  await page.route("**/api/memory-proposals", (route) =>
+    json(route, { proposals: [{ id: "p1", text: "You like climbing." }] }),
+  );
+  await page.goto("/");
+  const tabs = page.getByRole("navigation", { name: "Sections" }).last();
+  await expect(tabs).toBeVisible();
+  await page.getByLabel("Write a message").fill("Kind of lonely in my lab.");
+  await page.getByRole("button", { name: "send" }).click();
+  await expect(page.locator(".card.step")).toContainText("say hi to one person at the gym");
+  await expect(page.locator(".card.remember")).toContainText("You like climbing.");
+  for (const name of ["memories", "history", "chat"]) {
+    await tabs.getByRole("button", { name: new RegExp(name) }).click();
+    await expect(page.getByRole("note")).toContainText(/proof of concept/i);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
