@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { OPENING_MESSAGE } from "@/lib/companion/boundary/rules";
+import { greeting } from "@/lib/ui/greeting";
 import { MessageText } from "./message-text";
 
 /** MB-6. The server enforces the same limit. */
@@ -19,6 +21,9 @@ interface Message {
   text: string;
   crisis?: CrisisView | null;
 }
+/** Candid speaks first; the server saves the same text when the conversation starts. */
+const OPENING: Message = { id: "opening", role: "assistant", text: OPENING_MESSAGE };
+
 interface Proposal {
   id: string;
   text: string;
@@ -53,12 +58,6 @@ async function readError(response: Response): Promise<ApiErrorBody> {
   } catch {
     return {};
   }
-}
-
-function greeting(hour: number) {
-  if (hour < 12) return "good morning.";
-  if (hour < 18) return "good afternoon.";
-  return "good evening.";
 }
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -151,7 +150,6 @@ export function CompanionApp() {
     }
     const { conversationId: id } = (await response.json()) as { conversationId: string };
     setConversationId(id);
-    setMessages([]);
     setEnded(false);
     return id;
   }, [handleGateError]);
@@ -184,7 +182,7 @@ export function CompanionApp() {
       await loadSpace();
       // A conversation is created when the first message is sent, so empty chats are not saved.
       setConversationId(null);
-      setMessages([]);
+      setMessages([OPENING]);
       setEnded(false);
       setStatus("ready");
     } catch (caught) {
@@ -195,7 +193,7 @@ export function CompanionApp() {
 
   function newConversation() {
     setConversationId(null);
-    setMessages([]);
+    setMessages([OPENING]);
     setEnded(false);
     setError(null);
   }

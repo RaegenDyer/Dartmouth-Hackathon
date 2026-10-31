@@ -121,7 +121,8 @@ describe("companion routes", () => {
     const response = await say(conversationId, "I live in Hanover.");
     expect(response.status).toBe(200);
     const result = (await response.json()) as { reply: string; memoryProposals: { id: string; text: string }[] };
-    expect(result.reply).toMatch(/AI companion/);
+    // The disclosure arrived in Candid's opening message, so the reply does not repeat it.
+    expect(result.reply).not.toMatch(/AI companion/);
     expect(result.memoryProposals.map((proposal) => proposal.text)).toEqual(["You live in Hanover."]);
 
     const { memories, accept, memory } = await routes();
@@ -175,7 +176,7 @@ describe("companion routes", () => {
     const { getCompanion } = await import("@/lib/companion/server");
     expect(
       await getCompanion({ supabase: {} as never, userId: alice }).deps.messages.listForSession(conversationId),
-    ).toHaveLength(2);
+    ).toHaveLength(3); // opening message + one user turn + one reply
   });
 
   it("rejects oversized and malformed bodies", async () => {
@@ -253,8 +254,9 @@ describe("companion routes", () => {
     ).json()) as {
       messages: { role: string; text: string }[];
     };
-    expect(opened.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
-    expect(opened.messages[0]?.text).toBe("I live in Hanover. I like chess.");
+    expect(opened.messages.map((message) => message.role)).toEqual(["assistant", "user", "assistant"]);
+    expect(opened.messages[0]?.text).toMatch(/I'm Candid, an AI companion/);
+    expect(opened.messages[1]?.text).toBe("I live in Hanover. I like chess.");
 
     currentUser = bob;
     expect((await conversation.GET(new Request(`${origin}/api/conversations/${first}`), params(first))).status).toBe(

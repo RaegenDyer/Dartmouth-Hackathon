@@ -4,13 +4,16 @@ import { z } from "zod";
 export const MAX_TAVUS_SESSION_SECONDS = 300;
 export const MAX_TAVUS_ECHO_CHARACTERS = 4000;
 
-export const tavusIdentifierSchema = z.string().trim().min(1).max(128)
+export const tavusIdentifierSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
   .regex(/^[A-Za-z0-9_-]+$/);
 
 const createSessionSchema = z.strictObject({
   palId: tavusIdentifierSchema,
-  maxDurationSeconds: z.number().int().min(1).max(MAX_TAVUS_SESSION_SECONDS)
-    .default(MAX_TAVUS_SESSION_SECONDS),
+  maxDurationSeconds: z.number().int().min(1).max(MAX_TAVUS_SESSION_SECONDS).default(MAX_TAVUS_SESSION_SECONDS),
 });
 
 export type TavusAudioSessionRequest = z.input<typeof createSessionSchema>;
@@ -39,9 +42,15 @@ export function buildTavusAudioSessionRequest(input: TavusAudioSessionRequest) {
 
 const conversationUrlSchema = z.url({ protocol: /^https$/ }).refine((value) => {
   const url = new URL(value);
-  return !url.username && !url.password && !url.port && !url.search && !url.hash &&
+  return (
+    !url.username &&
+    !url.password &&
+    !url.port &&
+    !url.search &&
+    !url.hash &&
     /^[a-z0-9-]+\.daily\.co$/i.test(url.hostname) &&
-    /^\/[A-Za-z0-9_-]+$/.test(url.pathname);
+    /^\/[A-Za-z0-9_-]+$/.test(url.pathname)
+  );
 });
 const sessionResponseSchema = z.object({
   conversation_id: tavusIdentifierSchema,
@@ -71,9 +80,12 @@ export function parseTavusAudioSessionResponse(response: unknown): TavusAudioSes
 const echoInputSchema = z.strictObject({
   conversationId: tavusIdentifierSchema,
   inferenceId: z.uuid(),
-  text: z.string().trim().min(1).max(MAX_TAVUS_ECHO_CHARACTERS).refine(
-    (value) => !value.includes("\u0000") && !/[\uD800-\uDFFF]/u.test(value),
-  ),
+  text: z
+    .string()
+    .trim()
+    .min(1)
+    .max(MAX_TAVUS_ECHO_CHARACTERS)
+    .refine((value) => !value.includes("\u0000") && !/[\uD800-\uDFFF]/u.test(value)),
 });
 
 export type TavusTextEchoInput = z.infer<typeof echoInputSchema>;

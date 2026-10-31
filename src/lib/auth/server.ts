@@ -36,8 +36,10 @@ export async function getVerifiedSession(): Promise<{
   try {
     const supabase = await createRouteSupabaseClient();
     const { data, error } = await supabase.auth.getClaims();
-    if (isAuthRetryableFetchError(error) ||
-      (isAuthError(error) && error.status !== undefined && (error.status === 429 || error.status >= 500))) {
+    if (
+      isAuthRetryableFetchError(error) ||
+      (isAuthError(error) && error.status !== undefined && (error.status === 429 || error.status >= 500))
+    ) {
       return null;
     }
     const session = error || !data ? null : sessionFromVerifiedClaims(data.claims);

@@ -1,6 +1,7 @@
 import {
   AI_DISCLOSURE,
   DEPENDENCE_REPLY,
+  OPENING_MESSAGE,
   ONLY_CONNECTION_REPLY,
   REVEAL_REFUSAL,
   adviceCategory,
@@ -205,10 +206,13 @@ export function createConversationService(deps: ConversationDeps) {
     const changedAt = await deps.memories.lastUserChangeAt(session.userId);
     const expiredAt = memories.map((memory) => memory.expiresAt?.getTime() ?? 0).filter((time) => time <= at.getTime());
     const cutoff = Math.max(changedAt?.getTime() ?? 0, ...expiredAt, 0);
-    return (await deps.messages.listForSession(session.id))
+    const turns = (await deps.messages.listForSession(session.id))
       .filter((message) => !message.safety && message.createdAt.getTime() > cutoff)
-      .slice(-LIMITS.historyTurns)
-      .map((message) => ({ role: message.role, content: message.text }));
+      .slice(-LIMITS.historyTurns);
+    // The model's context starts with a user turn; the fixed opening message
+    // (and any other leading assistant text) is display-only.
+    while (turns[0]?.role === "assistant") turns.shift();
+    return turns.map((message) => ({ role: message.role, content: message.text }));
   }
 
   /**
@@ -405,7 +409,24 @@ export function createConversationService(deps: ConversationDeps) {
     }
   }
 
-  return { respond };
+  /** Creates a conversation in which Candid has already sent the opening message. */
+  async function startConversation(userId: string): Promise<ChatSession> {
+    const at = now();
+    const session = await deps.sessions.create(userId, at);
+    await deps.messages.append({
+      sessionId: session.id,
+      userId,
+      role: "assistant",
+      text: OPENING_MESSAGE,
+      createdAt: at,
+      safety: false,
+    });
+    const opened = { ...session, disclosed: true };
+    await deps.sessions.update(opened);
+    return opened;
+  }
+
+  return { respond, startConversation };
 }
 
 /** DP-5: deletes all of a user's messages, sessions, memories, proposals, social actions, and contact. */

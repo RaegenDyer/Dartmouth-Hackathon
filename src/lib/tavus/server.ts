@@ -4,7 +4,12 @@ import { z } from "zod";
 const enabledSchema = z.enum(["false", "true"]).default("false");
 const settingsSchema = z.object({
   TAVUS_API_KEY: z.string().trim().min(1).regex(/^\S+$/),
-  TAVUS_PAL_ID: z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/),
+  TAVUS_PAL_ID: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9_-]+$/),
 });
 
 export type TavusAudioConfiguration =
