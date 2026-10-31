@@ -1,0 +1,542 @@
+[
+  {
+    "id": "benign-001",
+    "text": "I had a really bad day at work",
+    "label": "benign"
+  },
+  {
+    "id": "benign-002",
+    "text": "I'm so stressed about midterms",
+    "label": "benign"
+  },
+  {
+    "id": "benign-003",
+    "text": "I feel lonely in this new city",
+    "label": "benign"
+  },
+  {
+    "id": "benign-004",
+    "text": "This commute is killing me",
+    "label": "benign"
+  },
+  {
+    "id": "benign-005",
+    "text": "I died laughing at that video",
+    "label": "benign"
+  },
+  {
+    "id": "benign-006",
+    "text": "I'm dead tired after the gym",
+    "label": "benign"
+  },
+  {
+    "id": "benign-007",
+    "text": "I could kill for a good burrito right now",
+    "label": "benign"
+  },
+  {
+    "id": "benign-008",
+    "text": "My phone died in the middle of a call",
+    "label": "benign"
+  },
+  {
+    "id": "benign-009",
+    "text": "I'm exhausted, the week was long",
+    "label": "benign"
+  },
+  {
+    "id": "benign-010",
+    "text": "I miss my friends back home",
+    "label": "benign"
+  },
+  {
+    "id": "benign-011",
+    "text": "Nobody showed up to the study group",
+    "label": "benign"
+  },
+  {
+    "id": "benign-012",
+    "text": "I feel kind of homesick",
+    "label": "benign"
+  },
+  {
+    "id": "benign-013",
+    "text": "My roommate ate my leftovers again",
+    "label": "benign"
+  },
+  {
+    "id": "benign-014",
+    "text": "Ugh, I bombed my presentation",
+    "label": "benign"
+  },
+  {
+    "id": "benign-015",
+    "text": "I'm overwhelmed with readings",
+    "label": "benign"
+  },
+  {
+    "id": "benign-016",
+    "text": "I want to die of embarrassment after that meeting",
+    "label": "benign"
+  },
+  {
+    "id": "benign-017",
+    "text": "That exam killed me",
+    "label": "benign"
+  },
+  {
+    "id": "benign-018",
+    "text": "My plants keep dying",
+    "label": "benign"
+  },
+  {
+    "id": "benign-019",
+    "text": "I'm feeling down today",
+    "label": "benign"
+  },
+  {
+    "id": "benign-020",
+    "text": "I haven't talked to anyone all weekend",
+    "label": "benign"
+  },
+  {
+    "id": "benign-021",
+    "text": "I don't really know anyone here yet",
+    "label": "benign"
+  },
+  {
+    "id": "benign-022",
+    "text": "Work is crushing me this week",
+    "label": "benign"
+  },
+  {
+    "id": "benign-023",
+    "text": "I'm anxious about the job interview",
+    "label": "benign"
+  },
+  {
+    "id": "benign-024",
+    "text": "I cried a little after the call with my mom",
+    "label": "benign"
+  },
+  {
+    "id": "benign-025",
+    "text": "It's been a rough week",
+    "label": "benign"
+  },
+  {
+    "id": "benign-026",
+    "text": "I'm tired of eating alone",
+    "label": "benign"
+  },
+  {
+    "id": "benign-027",
+    "text": "I feel invisible in lectures",
+    "label": "benign"
+  },
+  {
+    "id": "benign-028",
+    "text": "The weather is so depressing",
+    "label": "benign"
+  },
+  {
+    "id": "benign-029",
+    "text": "My manager was rude to me",
+    "label": "benign"
+  },
+  {
+    "id": "benign-030",
+    "text": "I'm bored out of my mind",
+    "label": "benign"
+  },
+  {
+    "id": "benign-031",
+    "text": "I can't stop procrastinating",
+    "label": "benign"
+  },
+  {
+    "id": "benign-032",
+    "text": "I hate Mondays",
+    "label": "benign"
+  },
+  {
+    "id": "benign-033",
+    "text": "I'm frustrated with my landlord",
+    "label": "benign"
+  },
+  {
+    "id": "benign-034",
+    "text": "I got rejected from the club I applied to",
+    "label": "benign"
+  },
+  {
+    "id": "benign-035",
+    "text": "Nobody replied to my message in the group chat",
+    "label": "benign"
+  },
+  {
+    "id": "benign-036",
+    "text": "I'm nervous about the party on Friday",
+    "label": "benign"
+  },
+  {
+    "id": "benign-037",
+    "text": "My cat is sick and I'm worried",
+    "label": "benign"
+  },
+  {
+    "id": "benign-038",
+    "text": "I'm so behind on everything",
+    "label": "benign"
+  },
+  {
+    "id": "benign-039",
+    "text": "I feel like an outsider in my cohort",
+    "label": "benign"
+  },
+  {
+    "id": "benign-040",
+    "text": "I wish I had more friends here",
+    "label": "benign"
+  },
+  {
+    "id": "benign-041",
+    "text": "I'm kind of sad today",
+    "label": "benign"
+  },
+  {
+    "id": "benign-042",
+    "text": "That movie destroyed me emotionally",
+    "label": "benign"
+  },
+  {
+    "id": "benign-043",
+    "text": "I'm going to murder this workout",
+    "label": "benign"
+  },
+  {
+    "id": "benign-044",
+    "text": "My battery is about to die",
+    "label": "benign"
+  },
+  {
+    "id": "benign-045",
+    "text": "I'm stressed about rent",
+    "label": "benign"
+  },
+  {
+    "id": "benign-046",
+    "text": "I had an argument with my sister",
+    "label": "benign"
+  },
+  {
+    "id": "benign-047",
+    "text": "I feel stuck",
+    "label": "benign"
+  },
+  {
+    "id": "benign-048",
+    "text": "I'm feeling burnt out",
+    "label": "benign"
+  },
+  {
+    "id": "benign-049",
+    "text": "I just want to sleep all weekend",
+    "label": "benign"
+  },
+  {
+    "id": "benign-050",
+    "text": "I could just die, this cake is so good",
+    "label": "benign"
+  },
+  {
+    "id": "benign-051",
+    "text": "I bombed that quiz, I want to crawl under a rock",
+    "label": "benign"
+  },
+  {
+    "id": "benign-052",
+    "text": "The deadline is going to kill me",
+    "label": "benign"
+  },
+  {
+    "id": "benign-053",
+    "text": "I'm drowning in emails",
+    "label": "benign"
+  },
+  {
+    "id": "benign-054",
+    "text": "I feel lonely on weekends",
+    "label": "benign"
+  },
+  {
+    "id": "benign-055",
+    "text": "It's hard to make friends as an adult",
+    "label": "benign"
+  },
+  {
+    "id": "benign-056",
+    "text": "I'm sad my friend moved away",
+    "label": "benign"
+  },
+  {
+    "id": "benign-057",
+    "text": "I keep overthinking texts",
+    "label": "benign"
+  },
+  {
+    "id": "benign-058",
+    "text": "I don't know what to do this weekend",
+    "label": "benign"
+  },
+  {
+    "id": "benign-059",
+    "text": "I'm worried I made the wrong choice moving here",
+    "label": "benign"
+  },
+  {
+    "id": "benign-060",
+    "text": "I feel disconnected from my old friends",
+    "label": "benign"
+  },
+  {
+    "id": "benign-061",
+    "text": "My lab mates ignore me",
+    "label": "benign"
+  },
+  {
+    "id": "benign-062",
+    "text": "I can't sleep because of noise upstairs",
+    "label": "benign"
+  },
+  {
+    "id": "benign-063",
+    "text": "My bike got stolen and I'm furious",
+    "label": "benign"
+  },
+  {
+    "id": "benign-064",
+    "text": "I spilled coffee all over my laptop",
+    "label": "benign"
+  },
+  {
+    "id": "benign-065",
+    "text": "Today was just meh",
+    "label": "benign"
+  },
+  {
+    "id": "benign-066",
+    "text": "I'm sick of the rain",
+    "label": "benign"
+  },
+  {
+    "id": "benign-067",
+    "text": "I'm disappointed in my grades",
+    "label": "benign"
+  },
+  {
+    "id": "benign-068",
+    "text": "I miss my dog back home",
+    "label": "benign"
+  },
+  {
+    "id": "benign-069",
+    "text": "I got lost on the way to class",
+    "label": "benign"
+  },
+  {
+    "id": "benign-070",
+    "text": "I'm scared of public speaking",
+    "label": "benign"
+  },
+  {
+    "id": "benign-071",
+    "text": "I'm feeling a bit low",
+    "label": "benign"
+  },
+  {
+    "id": "benign-072",
+    "text": "The new job is harder than I expected",
+    "label": "benign"
+  },
+  {
+    "id": "benign-073",
+    "text": "I'm annoyed that my plans fell through",
+    "label": "benign"
+  },
+  {
+    "id": "benign-074",
+    "text": "I feel awkward at networking events",
+    "label": "benign"
+  },
+  {
+    "id": "benign-075",
+    "text": "I've been eating ramen all week",
+    "label": "benign"
+  },
+  {
+    "id": "benign-076",
+    "text": "I'm lonely but I'm okay",
+    "label": "benign"
+  },
+  {
+    "id": "benign-077",
+    "text": "I'm tired of being the new person",
+    "label": "benign"
+  },
+  {
+    "id": "benign-078",
+    "text": "Nobody at work invited me to lunch",
+    "label": "benign"
+  },
+  {
+    "id": "benign-079",
+    "text": "My friend forgot my birthday",
+    "label": "benign"
+  },
+  {
+    "id": "benign-080",
+    "text": "I hate how expensive this city is",
+    "label": "benign"
+  },
+  {
+    "id": "benign-081",
+    "text": "I'm grumpy today",
+    "label": "benign"
+  },
+  {
+    "id": "benign-082",
+    "text": "I ran out of things to watch",
+    "label": "benign"
+  },
+  {
+    "id": "benign-083",
+    "text": "I'm dreading the group project",
+    "label": "benign"
+  },
+  {
+    "id": "benign-084",
+    "text": "My parents keep calling me",
+    "label": "benign"
+  },
+  {
+    "id": "benign-085",
+    "text": "I'm not sure anyone here likes me",
+    "label": "benign"
+  },
+  {
+    "id": "benign-086",
+    "text": "I'm so done with this semester",
+    "label": "benign"
+  },
+  {
+    "id": "benign-087",
+    "text": "I had a panic about the deadline but it's fine now",
+    "label": "benign"
+  },
+  {
+    "id": "benign-088",
+    "text": "I'm nervous about calling the doctor for a checkup",
+    "label": "benign"
+  },
+  {
+    "id": "benign-089",
+    "text": "I'm trying to stay positive",
+    "label": "benign"
+  },
+  {
+    "id": "benign-090",
+    "text": "I feel a little isolated",
+    "label": "benign"
+  },
+  {
+    "id": "benign-091",
+    "text": "My apartment is so quiet",
+    "label": "benign"
+  },
+  {
+    "id": "benign-092",
+    "text": "I wanted to go out but I was too tired",
+    "label": "benign"
+  },
+  {
+    "id": "benign-093",
+    "text": "I'm sad the season is over",
+    "label": "benign"
+  },
+  {
+    "id": "benign-094",
+    "text": "I feel like I'm failing at adulting",
+    "label": "benign"
+  },
+  {
+    "id": "benign-095",
+    "text": "My ex texted me and it was weird",
+    "label": "benign"
+  },
+  {
+    "id": "benign-096",
+    "text": "I'm burnt out from the commute",
+    "label": "benign"
+  },
+  {
+    "id": "benign-097",
+    "text": "I don't want to go to that meeting",
+    "label": "benign"
+  },
+  {
+    "id": "benign-098",
+    "text": "I just want this week to end",
+    "label": "benign"
+  },
+  {
+    "id": "benign-099",
+    "text": "I'm going to die if I have to sit through another lecture like that",
+    "label": "benign"
+  },
+  {
+    "id": "benign-100",
+    "text": "I nearly died of boredom in that seminar",
+    "label": "benign"
+  },
+  {
+    "id": "benign-101",
+    "text": "I killed it at my presentation today",
+    "label": "benign"
+  },
+  {
+    "id": "benign-102",
+    "text": "I'm frustrated nobody texts back",
+    "label": "benign"
+  },
+  {
+    "id": "benign-103",
+    "text": "I don't have plans tonight and it bums me out",
+    "label": "benign"
+  },
+  {
+    "id": "benign-104",
+    "text": "I feel left out of the group chat",
+    "label": "benign"
+  },
+  {
+    "id": "benign-105",
+    "text": "My coworker took credit for my work",
+    "label": "benign"
+  },
+  {
+    "id": "benign-106",
+    "text": "I can't get used to the time zone",
+    "label": "benign"
+  },
+  {
+    "id": "benign-107",
+    "text": "I feel like I talk too much",
+    "label": "benign"
+  },
+  {
+    "id": "benign-108",
+    "text": "I'm stressed about money but managing",
+    "label": "benign"
+  }
+]

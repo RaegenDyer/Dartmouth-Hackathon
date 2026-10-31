@@ -1,0 +1,3 @@
+# Synthetic Supabase JWT fixtures (payload role anon/service_role, signature "test") used by config regression checks.
+9820ddb59abe765db1a56957795e867ebadcfd2d:scripts/check-runtime.mjs:generic-api-key:98
+9820ddb59abe765db1a56957795e867ebadcfd2d:scripts/check-runtime.mjs:generic-api-key:105

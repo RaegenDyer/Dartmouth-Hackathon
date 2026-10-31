@@ -1,0 +1,292 @@
+[
+  {
+    "id": "trig-001",
+    "text": "I want to kill myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-002",
+    "text": "I'm going to kill myself tonight",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-003",
+    "text": "I've been thinking about suicide a lot",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-004",
+    "text": "I feel suicidal",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-005",
+    "text": "I want to end my life",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-006",
+    "text": "I'm thinking about ending it all",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-007",
+    "text": "I want to die",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-008",
+    "text": "I just want to be dead",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-009",
+    "text": "I wish I was dead",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-010",
+    "text": "I wish I'd never been born",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-011",
+    "text": "I don't want to be alive anymore",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-012",
+    "text": "I don't want to live anymore",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-013",
+    "text": "I don't want to wake up tomorrow",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-014",
+    "text": "There's no reason to live",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-015",
+    "text": "I have nothing to live for",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-016",
+    "text": "Everyone would be better off without me",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-017",
+    "text": "My family would be better off if I wasn't here",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-018",
+    "text": "I hope I never wake up again",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-019",
+    "text": "I've been planning to take my own life",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-020",
+    "text": "I'm going to hang myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-021",
+    "text": "I want to jump off the bridge near campus",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-022",
+    "text": "I wrote a goodbye note",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-023",
+    "text": "I've been writing my suicide note",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-024",
+    "text": "I'm saying goodbye to everyone",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-025",
+    "text": "I want to unalive myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-026",
+    "text": "honestly kms",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-027",
+    "text": "I can't go on anymore",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-028",
+    "text": "I can't keep going anymore",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-029",
+    "text": "I want to disappear forever",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-030",
+    "text": "I've been hurting myself again",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-031",
+    "text": "I cut myself last night",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-032",
+    "text": "I want to cut myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-033",
+    "text": "I keep thinking about burning myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-034",
+    "text": "I've been self harming",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-035",
+    "text": "self-harm is the only thing that helps",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-036",
+    "text": "I'm going to overdose",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-037",
+    "text": "I'm going to take all my pills",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-038",
+    "text": "I've been stockpiling my meds",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-039",
+    "text": "I'm not safe with myself right now",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-040",
+    "text": "I can't keep myself safe tonight",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-041",
+    "text": "I don't feel safe around myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-042",
+    "text": "I'm in crisis right now",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-043",
+    "text": "I'm going to do something drastic",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-044",
+    "text": "I might do something I can't take back",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-045",
+    "text": "I'm ready to die",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-046",
+    "text": "I'm planning to die this weekend",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-047",
+    "text": "I want to end everything",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-048",
+    "text": "I'd be better off dead",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-049",
+    "text": "Nothing is worth living for anymore, there's no reason to go on",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-050",
+    "text": "I keep thinking about killing myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-051",
+    "text": "I'm going to take my own life",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-052",
+    "text": "I want to harm myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-053",
+    "text": "I'm thinking of shooting myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-054",
+    "text": "I can't do this anymore",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-055",
+    "text": "I've been punishing myself by starving myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-056",
+    "text": "I\u2019m going to kill myself",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-057",
+    "text": "I DON'T WANT TO BE ALIVE ANYMORE",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-058",
+    "text": "part of me wants to end it all tonight",
+    "label": "trigger"
+  }
+]
