@@ -63,10 +63,16 @@ Only these values are application settings:
 | `ANTHROPIC_MODEL` | Server only; a model ID available to the configured workspace |
 | `VOICE_INPUT_ENABLED` | Optional server flag; defaults to `false`; configuration only |
 | `DEEPGRAM_API_KEY` | Server only; optional while voice is disabled |
+| `TAVUS_AUDIO_ENABLED` | Independent optional server flag; defaults to `false` |
+| `TAVUS_API_KEY` | Server only; optional while Tavus is disabled |
+| `TAVUS_PAL_ID` | Server only; preconfigured Echo PAL ID for future activation |
 
 The [Deepgram voice-input preparation](docs/voice.md) adds no live capture or microphone
 UI. Leave it disabled for text work. Its private configuration must not be sent
 to a browser, and enabling the flag alone does not implement the voice feature.
+The separate [Tavus audio-output architecture](docs/tavus.md) is also disabled.
+It prepares private audio-only sessions and supplied-text playback, with no
+camera capture or video UI. Live Echo/audio-only compatibility remains untested.
 
 Use an HTTP(S) Supabase URL and an `sb_publishable_` key; legacy `anon` JWTs
 also work. Secret keys and `service_role` JWTs are rejected. Both public settings

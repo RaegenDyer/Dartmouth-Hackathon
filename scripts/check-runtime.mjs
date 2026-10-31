@@ -5,6 +5,7 @@ import ts from "typescript";
 import { getPublicEnvironment } from "../src/lib/env/public.ts";
 import { getServerEnvironment } from "../src/lib/env/server.ts";
 import { getVoiceInputConfiguration } from "../src/lib/voice/server.ts";
+import { getTavusAudioConfiguration } from "../src/lib/tavus/server.ts";
 
 const settingNames = [
   "NEXT_PUBLIC_SUPABASE_URL",
@@ -15,6 +16,9 @@ const settingNames = [
   "ANTHROPIC_LOG",
   "VOICE_INPUT_ENABLED",
   "DEEPGRAM_API_KEY",
+  "TAVUS_AUDIO_ENABLED",
+  "TAVUS_API_KEY",
+  "TAVUS_PAL_ID",
 ];
 let originalSettings;
 
@@ -202,6 +206,41 @@ test("voice configuration rejects invalid flags and reports no secret values", (
   assert.throws(getVoiceInputConfiguration, (error) => {
     assert.equal(error.message,
       "Missing or invalid voice settings: DEEPGRAM_API_KEY");
+    return true;
+  });
+});
+
+test("Tavus audio configuration is independently disabled without credentials", () => {
+  assert.deepEqual(getTavusAudioConfiguration(), {
+    enabled: false, provider: "tavus", mode: "audio-only-echo",
+  });
+  process.env.TAVUS_API_KEY = "unused invalid key";
+  process.env.TAVUS_PAL_ID = "unused/invalid/id";
+  assert.equal(getTavusAudioConfiguration().enabled, false);
+  assert.equal(getVoiceInputConfiguration().enabled, false);
+});
+
+test("Tavus audio configuration validates separate server-only settings", () => {
+  process.env.TAVUS_AUDIO_ENABLED = "true";
+  assert.throws(getTavusAudioConfiguration, /TAVUS_API_KEY.*TAVUS_PAL_ID/);
+  process.env.TAVUS_API_KEY = " test-only-tavus-key ";
+  process.env.TAVUS_PAL_ID = " p_test_only ";
+  assert.deepEqual(getTavusAudioConfiguration(), {
+    enabled: true, provider: "tavus", mode: "audio-only-echo",
+    apiKey: "test-only-tavus-key", palId: "p_test_only",
+  });
+  assert.equal(getVoiceInputConfiguration().enabled, false);
+});
+
+test("Tavus configuration rejects malformed settings without exposing values", () => {
+  process.env.TAVUS_AUDIO_ENABLED = "yes";
+  assert.throws(getTavusAudioConfiguration, /Tavus settings: TAVUS_AUDIO_ENABLED$/);
+  process.env.TAVUS_AUDIO_ENABLED = "true";
+  process.env.TAVUS_API_KEY = "DO_NOT_INCLUDE THIS_VALUE";
+  process.env.TAVUS_PAL_ID = "unsafe/path";
+  assert.throws(getTavusAudioConfiguration, (error) => {
+    assert.equal(error.message,
+      "Missing or invalid Tavus settings: TAVUS_API_KEY, TAVUS_PAL_ID");
     return true;
   });
 });

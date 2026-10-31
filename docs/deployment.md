@@ -85,11 +85,17 @@ preview builds; use designated development settings when previews need services.
 | `ANTHROPIC_MODEL` | Model ID available to the configured Anthropic workspace |
 | `VOICE_INPUT_ENABLED` | Optional server flag; leave `false` while live voice is unimplemented |
 | `DEEPGRAM_API_KEY` | Optional server-only Deepgram key; never a public variable |
+| `TAVUS_AUDIO_ENABLED` | Independent optional server flag; keep `false` during preparation |
+| `TAVUS_API_KEY` | Optional server-only Tavus key; never a public variable |
+| `TAVUS_PAL_ID` | Optional server-only Echo PAL ID |
 
 The [voice-input architecture](voice.md) remains disabled and makes no calls.
 The first foundation deployment needs no Deepgram values. Vapi is no longer used.
 Enabling configuration
 alone does not implement voice; use the documented activation work first.
+The separate [Tavus audio-only scaffold](tavus.md) also needs no settings for the
+first foundation deployment. Its mode combination, session ownership, and RTC
+transport need verification/implementation before enabling live playback.
 
 Configure the two public Supabase values together. Partial or privileged public
 configuration fails before bundling. Never add `GITHUB_TOKEN`, `VERCEL_TOKEN`,

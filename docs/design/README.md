@@ -10,8 +10,9 @@ and visual direction remain open. No concept board is an approved specification.
 October 31 preference: the optional mascot should be a cute, whimsical animal or
 creature rather than a realistic human. This guides future image-generated
 character options; the actual mascot, animation, and app style still await the
-collaborator discussion and selection below. Use app-rendered artwork for this
-direction; Tavus is not required.
+collaborator discussion and selection below. Mascot implementation is currently
+deferred while Deepgram input and Tavus audio-only output architecture are
+prepared. This does not select a character or authorize video-conversation UI.
 
 When frontend work is about to begin, the agent must bring up the style
 discussion with the collaborator requesting or leading that work. **Any project

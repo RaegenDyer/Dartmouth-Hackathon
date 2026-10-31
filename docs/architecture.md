@@ -15,17 +15,21 @@ Two initial conversation scenarios are `check_in` and `social_step`. Additional
 scenarios, a product name, visuals, and model choice remain team decisions.
 Optional dictation later turns speech into editable text before the user sends
 it. Phone calls, live event scraping, and autonomous messages to other people
-are outside the initial scope. An optional cute, whimsical animal/creature
-mascot is under consideration; spoken replies are a separate optional decision.
+are outside the initial scope. Tavus is being prepared for optional audio-only
+replies. User camera capture and video conversations are outside scope. The
+cute, whimsical animal/creature mascot idea is deferred while architecture is built.
 
 Deepgram is selected for optional dictation; Vapi was dropped on October 31.
 The disabled provider/session ports,
 transcript adapter, draft buffer, and server configuration are prepared; actual
 capture and session transport are not implemented. The [voice architecture](voice.md)
 keeps user-reviewed transcription separate from the app's Anthropic conversation
-flow. The mascot is an app-rendered presentation layer with generated artwork;
-Tavus is not required for this non-human character direction. Its design waits
-on the collaborator-led image-generation workflow.
+flow. The separate [Tavus audio-output architecture](tavus.md) prepares private
+audio-only sessions and supplied-text Echo playback so the app/Claude remains
+responsible for the answer. Combined mode compatibility and live REST/RTC
+transport remain unverified/unimplemented. Both integrations default to disabled.
+Gemini is deferred until credits are available. Mascot design still waits on
+the collaborator-led image-generation workflow.
 
 ## System shape
 

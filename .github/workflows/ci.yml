@@ -64,6 +64,7 @@ jobs:
       - run: npm run check:contracts
       - run: npm run check:runtime
       - run: npm run check:voice
+      - run: npm run check:tavus
       - run: npm run check:schema
 
   e2e:

@@ -33,7 +33,8 @@ choose and code its own style. No direction has been selected yet.
 | Companion core (milestone 1, step 1) | Server-side modules in `src/lib/companion`: `respond()` conversation service, safety pre/post checks and crisis view, memory store and fact-only capture, code-enforced memory disclosure, weekly social-action scheduler, boundary rules (AI status, only-connection, dependence, prompt reveal), rate limiter, encrypted emergency contact, account-data deletion. Mocked and Anthropic LLM adapters. In-memory repositories. Vitest unit tests and a deterministic eval suite (`evals/`). See the [milestone report](docs/milestone-1-report.md). | Supabase-backed repositories, auth, route handlers, chat UI, and memory panel. The `eval-llm` run has not been executed yet. |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, validated runtime/build configuration, and provider factories; contract and configuration regression checks. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
 | Optional voice input | [Deepgram architecture](docs/voice.md), session/provider interfaces, mono-microphone transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default; Vapi retired. | Verified-user session bootstrap, actual audio transport, microphone controls, and browser/device checks; no live capture or provider connection yet |
-| Optional mascot | Direction recorded October 31: cute, whimsical animal/creature with app-rendered generated artwork; Tavus is not required. | Collaborator design discussion, image-generated character options, selection, and animation; no mascot assets or UI implemented |
+| Optional audio output | [Tavus architecture](docs/tavus.md), private audio-only request/response contracts, supplied-text Echo builder, session/playback interfaces, and isolated server settings. Disabled by default; no camera/video flow. | Verify Echo + audio-only together on the account, implement authenticated ownership/budgets and REST/RTC transport; no live sessions or playback yet |
+| Optional mascot | Cute, whimsical animal/creature preference recorded; mascot implementation is deferred while speech architecture is prepared. | Collaborator design discussion, image-generated character options, selection, and animation; no mascot assets or UI implemented |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
 
 The model client factory does not implement chat. Auth verifies and signs out
@@ -53,8 +54,8 @@ Current local verification:
 
 - Clean dependency installation with `npm ci`.
 - `npm run check`: lint, formatting, TypeScript, 150 Vitest unit tests,
-  9 contract checks, 13 runtime/configuration
-  checks, 11 voice-input checks, and 37 isolated database checks. These require no
+  9 contract checks, 16 runtime/configuration checks, 11 voice-input checks,
+  7 Tavus contract checks, and 37 isolated database checks. These require no
   service credentials or paid provider calls.
 - `npm run build`: production build.
 - `npm audit`: zero reported vulnerabilities after updating the lint toolchain's
@@ -122,9 +123,11 @@ not finalized. Text input and text output are the working scope; optional
 speech-to-text input can be added later. On October 31, the owner dropped Vapi
 and chose a cute, whimsical animal/creature direction for an optional mascot.
 Deepgram is the selected speech-input provider; its disabled architecture and
-transcript handling are prepared without a live connection. Spoken replies are
-a separate optional decision. The actual mascot design remains to be discussed
-and image-generated with the collaborator doing that work.
+transcript handling are prepared without a live connection. The latest direction
+also prepares Tavus for optional audio-only supplied replies, while Gemini is
+deferred until credits are available. Video conversation is outside scope.
+Mascot work is deferred; the actual design still needs the collaborator-led
+image-generation discussion.
 
 ## Start locally
 
@@ -183,6 +186,7 @@ tests/unit/                  Vitest unit tests
 e2e/                         Playwright end-to-end tests
 evals/                       Eval datasets (data/), runner, and committed reports
 src/lib/voice/               Optional dictation ports, transcript buffer, server config
+src/lib/tavus/               Optional audio-output contracts, ports, server config
 supabase/migrations/         Reviewable database changes; not applied automatically
 docs/                        Architecture, contracts, decisions, implementation order
 .github/workflows/           Checks; no production deployment workflow yet

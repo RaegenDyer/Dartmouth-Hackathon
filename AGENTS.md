@@ -36,12 +36,15 @@
 - Deepgram is selected for optional speech input; Vapi was dropped on October 31.
   Read docs/voice.md before voice work. Keep voice disabled by default; transport
   is not implemented. Preserve editable dictation and explicit Send. Keep the
-  permanent Deepgram key server-only. Spoken output is a separate optional
-  decision; outbound calls remain outside scope.
+  permanent Deepgram key server-only. Tavus is selected for optional audio output
+  through a separate disabled architecture; read docs/tavus.md. Keep Claude/app
+  logic authoritative and verify Echo + audio-only compatibility before live use.
+  User camera capture and video conversations are outside scope.
 - The optional mascot direction is a cute, whimsical animal or creature, rendered
-  in the app with generated raster artwork/animation. Tavus is not required for
-  this direction. Discuss and image-generate the actual mascot design with the
-  collaborating person before implementation; the style checkpoint stays pending.
+  in the app with generated raster artwork/animation. Mascot work is deferred
+  while Deepgram/Tavus architecture is prepared. Discuss and image-generate the
+  actual design with the collaborating person before implementation; the style
+  checkpoint stays pending. Gemini is deferred while its credits are pending.
 - For app visual design, use the image-generation workflow for app mockups as
   well as original raster icons and illustrative assets. The user prefers
   generated raster assets over SVG/vector icon packs, icon fonts, emoji, or

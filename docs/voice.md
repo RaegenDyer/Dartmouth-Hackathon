@@ -1,8 +1,9 @@
-# Optional speech and mascot architecture
+# Optional speech architecture
 
-Status, October 31, 2026: Deepgram is selected for optional speech input. The
-owner dropped Vapi and prefers a cute, whimsical animal/creature mascot. Tavus
-is not required for that direction. Voice remains disabled by default.
+Status, October 31, 2026: prepare Deepgram for optional speech input and Tavus
+for optional audio-only output. Keep Claude as the app's conversation model.
+Gemini is deferred while credits are pending; mascot work is deferred. Camera
+capture and video conversations are outside scope. Both providers default off.
 
 ## Implemented preparation
 
@@ -10,8 +11,10 @@ is not required for that direction. Voice remains disabled by default.
   transcript normalization, and an editable in-memory dictation buffer.
 - `src/lib/voice/server.ts`: isolated server-only configuration; disabled voice
   needs no Deepgram key and does not affect text, Anthropic, or Supabase setup.
-- Voice and runtime checks cover transcript finality, bounds, Unicode, editing,
-  cancellation, and safe configuration errors.
+- `src/lib/tavus/`: independent audio-output contracts, server configuration,
+  and session/playback ports; see [Tavus preparation](tavus.md).
+- Voice, Tavus, and runtime checks cover transcript finality, bounds, Unicode,
+  editing, cancellation, private-room contracts, and safe configuration errors.
 
 Actual audio capture, temporary browser credentials, streaming transport, mascot
 assets/animation, and speech output remain implementation work. Enabling the
@@ -24,18 +27,15 @@ installed or live connection created, and no Vapi key or assistant ID is used.
 | --- | --- | --- |
 | Speech input | Deepgram standalone speech-to-text | Interfaces and transcript adapter prepared; transport absent |
 | Conversation and saved data | App backend, Claude, Supabase | See root README and milestone report for current progress |
-| Mascot presentation | Image-generated animal/creature artwork, animated in the app | Preference recorded; design discussion and assets pending |
-| Spoken replies | Optional Deepgram text-to-speech if selected | Separate decision; no synthesis/playback code |
+| Audio output | Optional Tavus supplied-text Echo in audio-only sessions | Contracts/ports prepared; combined mode and live transport unverified |
+| Mascot presentation | Optional image-generated animal/creature artwork | Deferred; design discussion and assets pending |
 
-The mascot should observe presentation states such as idle, listening, thinking,
-and speaking. It does not own conversation history, authentication, or approved
-memory. Basic state animation does not require a video-avatar service; detailed
-mouth synchronization is a separate implementation choice.
-
-Tavus's current Face documentation supports human-shaped likenesses, including
-cartoon styles, but excludes animals and other non-human mascots. If the team
-later chooses a human-shaped conversational video avatar, revisit Tavus as an
-alternative pipeline. See [supported faces](https://docs.tavus.io/sections/faces/overview).
+The providers are separate capabilities, not competing conversation models.
+Deepgram handles microphone transcription; the app/Claude produces the reply.
+Tavus is intended to play only supplied, backend-approved reply text. The Tavus
+Echo plus audio-only combination still needs account-level validation; its full
+pipeline must not be enabled as an unannounced fallback. Mascot details do not
+block either interface.
 
 ## Planned input path
 
@@ -46,8 +46,8 @@ flowchart LR
   Draft --> Review[Person reviews and presses Send]
   Review --> API[Authenticated app chat]
   API --> Claude[Claude response]
-  Claude -. optional future synthesis .-> TTS[Deepgram TTS]
-  TTS -. audio playback state .-> Mascot[App-rendered mascot]
+  Claude -. validated reply text .-> Tavus[Optional Tavus audio-only Echo]
+  Tavus -. future receive-only RTC .-> Playback[Audio playback, no camera]
 ```
 
 Use a mono microphone stream, not speaker/system audio. The adapter accepts
@@ -78,7 +78,8 @@ guard callbacks by session generation; `reset()` is only a local draft reset.
 The getter validates configuration only when enabled; it does not verify the key
 with Deepgram. Never expose its result or put the permanent key in a
 `NEXT_PUBLIC_*` variable. Leave the flag false and the key blank for text work.
-No Vapi or Tavus account setup is needed for this architecture.
+The scaffold works with both providers disabled and no service keys. Optional
+Tavus settings are listed in [its activation guide](tavus.md). Vapi is retired.
 
 Before activating speech:
 
@@ -93,12 +94,12 @@ Before activating speech:
    HTTPS. Set encoding/sample rate to match the captured audio. Stop tracks,
    release sockets/listeners, and cancel pending starts on abort/error/unmount.
    Flush final speech before normal stop and test late/replayed events.
-4. Follow the [collaborator style workflow](design/README.md), generate original
-   raster mascot options, and select the character/animation before UI work.
-   Keep dictation editable and require Send; validate it again at the chat API.
-5. If spoken replies are selected, add bounded text-to-speech and playback
-   cancellation separately. Avoid feeding playback back into microphone input.
-   See [Deepgram streaming TTS](https://developers.deepgram.com/docs/streaming-text-to-speech).
+4. Follow the [collaborator style workflow](design/README.md) before microphone
+   controls. Keep dictation editable and require Send; validate it again at the
+   chat API. Mascot design is deferred and does not gate backend preparation.
+5. Activate Tavus output only after its separate mode, ownership, and cleanup
+   checks. Add playback cancellation and avoid feeding output audio back into
+   the microphone. Select one output provider per reply.
 
 No paid calls, new account configuration, audio retention, mascot rendering, or
 frontend design is performed by the current scaffold. Browser/device integration
