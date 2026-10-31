@@ -125,4 +125,9 @@ test("phone layout: bottom tabs, notice on every tab, in-chat cards, no sideways
     await expect(page.getByRole("note")).toContainText(/proof of concept/i);
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  const tabIcons = tabs.locator("img.icon");
+  await expect(tabIcons).toHaveCount(3);
+  for (const icon of await tabIcons.all()) {
+    expect(await icon.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+  }
 });

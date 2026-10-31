@@ -50,7 +50,8 @@ raster artwork.
 | Deciding collaborator | Neeraj Kumar, with feedback from Raegen (layout that makes core features obvious, more color) and testers (cozier, less stark dark mode) |
 | Selected concept | HTML preview "Candid Warm Hearth" (private artifact, 2026-10-31): oat and cream surfaces, cocoa text, terracotta actions, sage for memories, honey for the weekly small step; rounder bubbles and pill buttons; Geist type kept |
 | Layout | Desktop: labeled left rail (chat, memories with a count, conversations), chat in the center, "what Candid remembers" panel on the right. Memory suggestions appear inside the chat as sage cards right after the reply they came from; the weekly small step is its own honey card. Phone: full-screen chat with bottom tabs for chat, memories (count), and history |
-| Dark mode | Follows the device setting with a warm "evening" palette (deep cocoa, cream text, amber and terracotta accents) instead of near-black |
+| Dark mode | Always the cozy light look, even when the device is in dark mode (revised 2026-10-31 by Neeraj Kumar after the evening palette still read as "unchanged dark" on dark-mode devices) |
+| Icons (interim) | Chat bubble, bookmark (memories), house (history), and gear (your data), cropped from the generated [raster icon family study](concepts/raster-icon-family-study.png) and exported as transparent 192px PNGs in `public/icons/`, approved by Neeraj Kumar on 2026-10-31. Text labels stay beside every icon. Final icons should still be generated individually at production resolution |
 | Image generation | Not used: no image-generation tool in this session; the collaborator approved the HTML preview. Illustrations and the mascot still need image-generated artwork |
 | Approved scope | All signed-in and signed-out app screens on desktop and phone |
 | Decision date | 2026-10-31 |
