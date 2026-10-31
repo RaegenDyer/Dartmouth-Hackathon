@@ -30,8 +30,8 @@ review reminder, not an automated block on a direct Git push.
 
 ## First checkout
 
-1. Clone this repository and switch to the shared foundation branch when it is
-   published. Use a feature branch for your work.
+1. Clone this repository and start from the shared `main` branch, which contains
+   the merged foundation. Use a feature branch for your work.
 2. Install Node.js 22.13+ within Node 22. `.nvmrc` selects that release line.
 3. Run `npm ci` and `npm run dev`. No credentials are needed to see the preparation
    page or call `GET /api/health`.
@@ -41,6 +41,10 @@ review reminder, not an automated block on a direct Git push.
 
 In Windows PowerShell, if execution policy blocks `npm.ps1`, use `npm.cmd`
 for these commands (for example, `npm.cmd ci`). No policy change is needed.
+
+For hosting setup, use [the Vercel deployment guide](docs/deployment.md).
+`vercel.json` runs the checks before building and includes development build
+tools during installation. The first foundation deployment needs no app keys.
 
 ## Working on live integrations
 

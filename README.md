@@ -4,7 +4,7 @@
 
 **Status as of October 30, 2026: the technical foundation is ready for feature
 implementation. The app is not yet a working end-to-end product or a deployed
-website.** The foundation is on `prep/architecture-foundation`.
+website.** The foundation has been merged into `main` through PR #1.
 
 **Current user direction:** prioritize reusable capabilities and preparation for
 multiple contributors. Product features are exploratory and mutable. Treat the
@@ -28,7 +28,7 @@ choose and code its own style. No direction has been selected yet.
 | Anthropic | Credentials verified with a successful live text request. Server-only SDK client factory exists. | Connect the app to a model request/response flow; choose model and usage limits |
 | Supabase | Project access, a read-only SQL query, and authentication-configuration access verified. Browser/server client factories exist. | App login/session refresh, user-scoped repositories, and an applied schema |
 | Data model | Draft migration for profiles, conversations, messages, memory proposals, memories, and social actions; 37 isolated PostgreSQL behavior checks pass, including expiry and input-bound regressions. | Revise tables to match chosen features; verify real Supabase Auth/Data API behavior and concurrency before application |
-| Vercel | Hosting choice settled and API token verified. | Create the hosting project, set application environment variables, and deploy; no deployment has been performed |
+| Vercel | Account access verified; `vercel.json` configures Next.js, locked installation with build tools, and checks before building. [Deployment guide](docs/deployment.md) prepared. | Import the GitHub repository and create the project; initial foundation needs no app variables; no deployment has been performed |
 | GitHub | Repository access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, validated runtime/build configuration, and provider factories; contract and configuration regression checks. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
@@ -80,6 +80,19 @@ Before feature work, read [AGENTS.md](AGENTS.md), this status summary, and the
 relevant architecture documents. Update this README in the same change whenever
 a capability becomes implemented, a migration is applied, or a deployment is
 verified. Distinguish provider access, code scaffolding, and tested app behavior.
+
+### Hosting preparation
+
+Follow [the Vercel setup guide](docs/deployment.md) to import `main` from GitHub.
+The October 30 account check found a Hobby account with no Vercel projects; the
+GitHub repository is private. Review the guide's collaboration requirements
+before relying on deployments authored by every contributor. No paid plan or
+repository visibility change has been made.
+
+The first deployment can serve the preparation page and `/api/health` with no
+application environment variables or Supabase migration. Add integration settings
+when those features are implemented. Record the actual production URL and tested
+commit here after the first hosted deployment is verified.
 
 ## Exploratory product direction
 
@@ -135,6 +148,7 @@ src/lib/env/                 Explicit runtime configuration boundaries
 supabase/migrations/         Reviewable database changes; not applied automatically
 docs/                        Architecture, contracts, decisions, implementation order
 .github/workflows/           Checks; no production deployment workflow yet
+vercel.json                  Vercel framework, installation, and checked build
 ```
 
 ## Credential boundaries
