@@ -30,6 +30,7 @@ choose and code its own style. No direction has been selected yet.
 | Data model | Draft migration for profiles, conversations, messages, memory proposals, memories, and social actions; 37 isolated PostgreSQL behavior checks pass, including expiry and input-bound regressions. | Revise tables to match chosen features; verify real Supabase Auth/Data API behavior and concurrency before application |
 | Vercel | Hosting choice settled and API token verified. | Create the hosting project, set application environment variables, and deploy; no deployment has been performed |
 | GitHub | Repository access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
+| Companion core (milestone 1, step 1) | Server-side modules in `src/lib/companion`: `respond()` conversation service, safety pre/post checks and crisis view, memory store and fact-only capture, code-enforced memory disclosure, weekly social-action scheduler, boundary rules (AI status, only-connection, dependence, prompt reveal), rate limiter, encrypted emergency contact, account-data deletion. Mocked and Anthropic LLM adapters. In-memory repositories. Vitest unit tests and a deterministic eval suite (`evals/`). See the [milestone report](docs/milestone-1-report.md). | Supabase-backed repositories, auth, route handlers, chat UI, and memory panel. The `eval-llm` run has not been executed yet. |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, validated runtime/build configuration, and provider factories; contract and configuration regression checks. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
 
@@ -58,8 +59,14 @@ Current local verification:
   succeed, unsupported health writes return 405, and the unimplemented chat
   endpoint returns 404.
 
-CI covers dependency installation, dependency audit, `npm run check`, and the
-build. The production-server smoke checks were run locally. The original
+CI (`.github/workflows/ci.yml`) runs separate jobs named `lint` (ESLint and
+Prettier), `typecheck`, `unit` (Vitest plus the contract/runtime/schema checks),
+`e2e` (Playwright), `security` (`npm audit` and gitleaks), `build`, and
+`eval-fast`. `.github/workflows/eval-llm.yml` runs the LLM-judged evals weekly and
+on PRs that touch `src/lib/companion`, `src/lib/anthropic`, or `evals`. It needs
+the `ANTHROPIC_API_KEY` secret and an `ANTHROPIC_MODEL` repository variable.
+Branch protection on `main` must be configured in the GitHub settings so that the
+seven CI jobs are required checks. The production-server smoke checks were run locally. The original
 foundation commit `9f39a7e` also has a recorded
 [successful CI baseline](https://github.com/RaegenDyer/Dartmouth-Hackathon/actions/runs/41150082460).
 
@@ -101,9 +108,16 @@ npm run dev
 Open http://localhost:3000. For the checks used in CI:
 
 ```sh
-npm run check
+npm run check        # lint, Prettier, typecheck, Vitest, contract/runtime/schema checks
 npm run build
+npm run test:e2e     # Playwright; builds must exist (npm run build) first
+npm run eval:fast    # deterministic evals with the mocked LLM; writes evals/reports/eval-fast.{md,json}
+npm run eval:llm     # LLM-judged evals; needs ANTHROPIC_API_KEY and ANTHROPIC_MODEL
 ```
+
+Companion settings in `.env.example`: `LLM_ADAPTER` (`mock` by default, or
+`anthropic`) and `CONTACT_ENCRYPTION_KEY` (32 random bytes, base64) for
+emergency contacts at rest.
 
 The default preparation page does not contact Supabase or Anthropic. Feature
 developers can copy `.env.example` to `.env.local` and fill in application
@@ -132,6 +146,10 @@ src/lib/domain/              Service boundary interfaces
 src/lib/anthropic/           Server-only model client factory
 src/lib/supabase/            Browser and server client factories
 src/lib/env/                 Explicit runtime configuration boundaries
+src/lib/companion/           Conversation, safety, memory, disclosure, scheduler, LLM adapter
+tests/unit/                  Vitest unit tests
+e2e/                         Playwright end-to-end tests
+evals/                       Eval datasets (data/), runner, and committed reports
 supabase/migrations/         Reviewable database changes; not applied automatically
 docs/                        Architecture, contracts, decisions, implementation order
 .github/workflows/           Checks; no production deployment workflow yet

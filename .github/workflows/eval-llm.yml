@@ -1,0 +1,48 @@
+name: eval-llm
+
+# LLM-judged boundary evals against the real model. Runs on a schedule and on
+# pull requests that touch prompts or the conversation module.
+on:
+  schedule:
+    - cron: "17 14 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/lib/companion/**"
+      - "src/lib/anthropic/**"
+      - "evals/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-llm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval-llm:
+    # Secrets are unavailable to fork PRs; untrusted fork code never runs with the key.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+      EVAL_JUDGE_MODEL: ${{ vars.EVAL_JUDGE_MODEL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run eval:llm
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: eval-llm-report
+          path: |
+            evals/reports/eval-llm.md
+            evals/reports/eval-llm.json

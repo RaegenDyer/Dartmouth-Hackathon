@@ -14,7 +14,13 @@
     "check:contracts": "node --experimental-default-type=module --experimental-strip-types --test scripts/check-contracts.mjs",
     "check:runtime": "node --experimental-default-type=module --experimental-strip-types --conditions=react-server --test scripts/check-runtime.mjs",
     "check:schema": "node scripts/check-schema.mjs",
-    "check": "npm run lint && npm run typecheck && npm run check:contracts && npm run check:runtime && npm run check:schema"
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run check:contracts && npm run check:runtime && npm run check:schema",
+    "format:check": "prettier --check src/lib/companion tests e2e evals/run.ts evals/data playwright.config.ts vitest.config.mts",
+    "format": "prettier --write src/lib/companion tests e2e evals/run.ts evals/data playwright.config.ts vitest.config.mts",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "eval:fast": "tsx evals/run.ts --mode=fast",
+    "eval:llm": "tsx --conditions=react-server evals/run.ts --mode=llm"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
@@ -30,13 +36,17 @@
     "@electric-sql/pglite": "0.5.13",
     "@eslint/js": "10.0.1",
     "@next/eslint-plugin-next": "16.4.3",
+    "@playwright/test": "1.63.0",
     "@types/node": "22.20.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "eslint": "10.14.0",
     "globals": "17.13.0",
+    "prettier": "3.9.10",
+    "tsx": "4.23.15",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.72.1"
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.0.5"
   },
   "overrides": {
     "minimatch": "11.0.1"
