@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { MessageText } from "./message-text";
 
-const MAX_MESSAGE = 4000;
+/** MB-6. The server enforces the same limit. */
+const MAX_MESSAGE = 1000;
 
-type Status = "loading" | "unconfigured" | "signed-out" | "ready";
+type Status = "loading" | "chat-disabled" | "unconfigured" | "age-gate" | "under-18" | "ready";
 
 interface CrisisView {
   resources: { label: string; contact: string }[];
@@ -24,6 +26,13 @@ interface Proposal {
 interface SavedMemory {
   id: string;
   text: string;
+  expiresAt: string | null;
+}
+interface ApiErrorBody {
+  error?: { message?: string };
+  ageRequired?: boolean;
+  sessionExpired?: boolean;
+  chatDisabled?: boolean;
 }
 
 const jsonInit = (method: string, body?: unknown): RequestInit => ({
@@ -32,12 +41,11 @@ const jsonInit = (method: string, body?: unknown): RequestInit => ({
   body: body === undefined ? undefined : JSON.stringify(body),
 });
 
-async function errorMessage(response: Response, fallback: string) {
+async function readError(response: Response): Promise<ApiErrorBody> {
   try {
-    const body = (await response.json()) as { error?: { message?: string } };
-    return body.error?.message ?? fallback;
+    return (await response.json()) as ApiErrorBody;
   } catch {
-    return fallback;
+    return {};
   }
 }
 
@@ -47,6 +55,32 @@ function greeting(hour: number) {
   return "Good evening.";
 }
 
+const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
+
+/** OP-1: static notice shown when chat is switched off. */
+function ChatDisabledNotice() {
+  return (
+    <main className="welcome">
+      <p className="brand">Companion</p>
+      <h1>Chat is turned off right now.</h1>
+      <div className="notice crisis-notice" role="alert">
+        <h2>If you need help now</h2>
+        <ul>
+          <li>
+            <strong>988 Suicide and Crisis Lifeline (US):</strong> call or text 988
+          </li>
+          <li>
+            <strong>Emergency services (US):</strong> 911
+          </li>
+          <li>
+            <strong>Outside the US:</strong> contact your local emergency services
+          </li>
+        </ul>
+      </div>
+    </main>
+  );
+}
+
 export function CompanionApp() {
   const [status, setStatus] = useState<Status>("loading");
   const [hello, setHello] = useState("Hello.");
@@ -54,22 +88,52 @@ export function CompanionApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [keepChoices, setKeepChoices] = useState<Record<string, boolean>>({});
   const [memories, setMemories] = useState<SavedMemory[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [ended, setEnded] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
+  const resetChat = useCallback(() => {
+    setConversationId(null);
+    setMessages([]);
+    setProposals([]);
+    setMemories([]);
+    setEnded(false);
+    setConfirmDelete(false);
+  }, []);
+
+  /** Moves the UI to the right screen for auth/kill-switch errors. Returns true if handled. */
+  const handleGateError = useCallback(
+    (body: ApiErrorBody) => {
+      if (body.chatDisabled) setStatus("chat-disabled");
+      else if (body.ageRequired) setStatus("age-gate");
+      else if (body.sessionExpired) {
+        resetChat();
+        setStatus("age-gate");
+        setError(body.error?.message ?? "Your session ended.");
+      } else return false;
+      return true;
+    },
+    [resetChat],
+  );
+
   const startConversation = useCallback(async () => {
     const response = await fetch("/api/conversations", jsonInit("POST", { scenario: "check_in" }));
-    if (!response.ok) throw new Error(await errorMessage(response, "Could not start a conversation."));
+    if (!response.ok) {
+      const body = await readError(response);
+      if (handleGateError(body)) return null;
+      throw new Error(body.error?.message ?? "Could not start a conversation.");
+    }
     const { conversationId: id } = (await response.json()) as { conversationId: string };
     setConversationId(id);
     setMessages([]);
     setEnded(false);
     return id;
-  }, []);
+  }, [handleGateError]);
 
   const loadSpace = useCallback(async () => {
     const [proposalResponse, memoryResponse] = await Promise.all([
@@ -83,23 +147,25 @@ export function CompanionApp() {
   const enterApp = useCallback(async () => {
     setError(null);
     try {
-      await startConversation();
+      if (!(await startConversation())) return;
       await loadSpace();
       setStatus("ready");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Something went wrong.");
-      setStatus("signed-out");
+      setStatus("age-gate");
     }
   }, [loadSpace, startConversation]);
 
   useEffect(() => {
     setHello(greeting(new Date().getHours()));
     void (async () => {
+      const state = (await (await fetch("/api/companion/status")).json()) as { chatEnabled: boolean };
+      if (!state.chatEnabled) return setStatus("chat-disabled");
       const response = await fetch("/api/auth/session");
       if (response.status === 503) return setStatus("unconfigured");
-      const body = (await response.json()) as { authenticated: boolean };
-      if (body.authenticated) await enterApp();
-      else setStatus("signed-out");
+      const body = (await response.json()) as { authenticated: boolean; ageConfirmed?: boolean };
+      if (body.authenticated && body.ageConfirmed) await enterApp();
+      else setStatus("age-gate");
     })();
   }, [enterApp]);
 
@@ -109,40 +175,54 @@ export function CompanionApp() {
 
   async function startSession() {
     setError(null);
-    const response = await fetch("/api/auth/anonymous", jsonInit("POST"));
-    if (!response.ok) return setError(await errorMessage(response, "Could not start a session."));
+    const response = await fetch("/api/auth/anonymous", jsonInit("POST", { ageConfirmed: true }));
+    if (!response.ok) return setError((await readError(response)).error?.message ?? "Could not start a session.");
     await enterApp();
   }
 
   async function signOut() {
     await fetch("/api/auth/sign-out", jsonInit("POST"));
-    setConversationId(null);
-    setMessages([]);
-    setProposals([]);
-    setMemories([]);
-    setStatus("signed-out");
+    resetChat();
+    setStatus("age-gate");
+  }
+
+  async function deleteMyData() {
+    const response = await fetch("/api/account", jsonInit("DELETE"));
+    if (!response.ok) {
+      setConfirmDelete(false);
+      return setError((await readError(response)).error?.message ?? "Your data could not be deleted.");
+    }
+    resetChat();
+    setStatus("age-gate");
+    setError("Your conversations, memories, and suggestions were deleted.");
   }
 
   async function send(event?: FormEvent) {
     event?.preventDefault();
     const content = draft.trim();
-    if (!content || sending || !conversationId) return;
+    if (!content || sending || !conversationId || content.length > MAX_MESSAGE) return;
     setSending(true);
     setError(null);
     const clientRequestId = crypto.randomUUID();
     setMessages((current) => [...current, { id: clientRequestId, role: "user", text: content }]);
     setDraft("");
 
-    const post = (id: string) =>
-      fetch("/api/chat", jsonInit("POST", { conversationId: id, clientRequestId, content }));
+    const post = (id: string) => fetch("/api/chat", jsonInit("POST", { conversationId: id, clientRequestId, content }));
     try {
       let response = await post(conversationId);
       // The local server keeps conversations in memory; after a restart, start a new one.
-      if (response.status === 404) response = await post(await startConversation());
-      if (!response.ok) throw new Error(await errorMessage(response, "Your message could not be sent."));
+      if (response.status === 404) {
+        const fresh = await startConversation();
+        if (fresh) response = await post(fresh);
+      }
+      if (!response.ok) {
+        const body = await readError(response);
+        if (handleGateError(body)) return;
+        throw new Error(body.error?.message ?? "Your message could not be sent.");
+      }
       const result = (await response.json()) as {
         reply: string;
-        safetyTriggered: boolean;
+        conversationEnded: boolean;
         crisis: CrisisView | null;
         memoryProposals: Proposal[];
       };
@@ -151,7 +231,7 @@ export function CompanionApp() {
         { id: clientRequestId, role: "user", text: content },
         { id: `${clientRequestId}-reply`, role: "assistant", text: result.reply, crisis: result.crisis },
       ]);
-      if (result.safetyTriggered) setEnded(true);
+      if (result.conversationEnded) setEnded(true);
       if (result.memoryProposals.length) setProposals((current) => [...current, ...result.memoryProposals]);
     } catch (caught) {
       setMessages((current) => current.filter((message) => message.id !== clientRequestId));
@@ -173,9 +253,11 @@ export function CompanionApp() {
     const content = (edits[proposal.id] ?? proposal.text).trim();
     const response = await fetch(
       `/api/memory-proposals/${proposal.id}/accept`,
-      jsonInit("POST", { content, expiresAt: null }),
+      jsonInit("POST", { content, keep: keepChoices[proposal.id] ?? false }),
     );
-    if (!response.ok) return setError(await errorMessage(response, "That memory could not be saved."));
+    if (!response.ok) {
+      return setError((await readError(response)).error?.message ?? "That memory could not be saved.");
+    }
     const { memory } = (await response.json()) as { memory: SavedMemory };
     setProposals((current) => current.filter((item) => item.id !== proposal.id));
     setMemories((current) => [memory, ...current]);
@@ -184,18 +266,27 @@ export function CompanionApp() {
   async function dismissProposal(proposal: Proposal) {
     const response = await fetch(`/api/memory-proposals/${proposal.id}/dismiss`, jsonInit("POST"));
     if (!response.ok && response.status !== 404) {
-      return setError(await errorMessage(response, "That suggestion could not be dismissed."));
+      return setError((await readError(response)).error?.message ?? "That suggestion could not be dismissed.");
     }
     setProposals((current) => current.filter((item) => item.id !== proposal.id));
+  }
+
+  async function keepMemory(memory: SavedMemory) {
+    const response = await fetch(`/api/memories/${memory.id}/keep`, jsonInit("POST"));
+    if (!response.ok) return setError((await readError(response)).error?.message ?? "That memory could not be kept.");
+    const { memory: kept } = (await response.json()) as { memory: SavedMemory };
+    setMemories((current) => current.map((item) => (item.id === kept.id ? kept : item)));
   }
 
   async function deleteMemory(memory: SavedMemory) {
     const response = await fetch(`/api/memories/${memory.id}`, jsonInit("DELETE"));
     if (!response.ok && response.status !== 404) {
-      return setError(await errorMessage(response, "That memory could not be deleted."));
+      return setError((await readError(response)).error?.message ?? "That memory could not be deleted.");
     }
     setMemories((current) => current.filter((item) => item.id !== memory.id));
   }
+
+  if (status === "chat-disabled") return <ChatDisabledNotice />;
 
   if (status !== "ready") {
     return (
@@ -212,20 +303,35 @@ export function CompanionApp() {
             </p>
           </div>
         )}
-        {status === "signed-out" && (
+        {status === "age-gate" && (
           <>
             <p className="lede">
-              An AI companion for settling into a new place. You choose what it remembers, and it will never contact
-              anyone for you.
+              An AI companion for settling into a new place. You choose what it remembers, and it will not contact
+              anyone for you. This is a proof of concept.
             </p>
-            <button type="button" className="primary" onClick={() => void startSession()}>
-              Start a private session
-            </button>
+            {/* AA-1: placeholder wording, pending team and legal review. */}
+            <fieldset className="age-gate">
+              <legend>This proof of concept is for adults. Are you 18 or older?</legend>
+              <div className="actions">
+                <button type="button" className="primary" onClick={() => void startSession()}>
+                  Yes, I&apos;m 18 or older
+                </button>
+                <button type="button" className="quiet" onClick={() => setStatus("under-18")}>
+                  No, I&apos;m under 18
+                </button>
+              </div>
+            </fieldset>
             <p className="fine-print">
-              This starts an anonymous session in this browser. It ends if you sign out, clear cookies, or switch
+              Starting creates an anonymous session in this browser. It ends if you sign out, clear cookies, or switch
               devices.
             </p>
           </>
+        )}
+        {status === "under-18" && (
+          <div className="notice" role="status">
+            <h2>Sorry, this proof of concept is only for adults</h2>
+            <p>If you need someone to talk to right now, you can call or text 988 in the US.</p>
+          </div>
         )}
         {error && (
           <p className="error" role="alert">
@@ -243,12 +349,33 @@ export function CompanionApp() {
         <button type="button" className="quiet" onClick={() => void startConversation()}>
           New conversation
         </button>
-        <button type="button" className="quiet sign-out" onClick={() => void signOut()}>
-          Sign out
-        </button>
+        <div className="sidebar-end">
+          {confirmDelete ? (
+            <div className="confirm" role="group" aria-label="Confirm data deletion">
+              <p>Delete all your conversations, memories, and suggestions? This can&apos;t be undone.</p>
+              <button type="button" className="danger small" onClick={() => void deleteMyData()}>
+                Delete everything
+              </button>
+              <button type="button" className="quiet small" onClick={() => setConfirmDelete(false)}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="quiet" onClick={() => setConfirmDelete(true)}>
+              Delete my data
+            </button>
+          )}
+          <button type="button" className="quiet" onClick={() => void signOut()}>
+            Sign out
+          </button>
+        </div>
       </aside>
 
       <main className="today">
+        {/* CD-2 */}
+        <p className="poc-notice" role="note">
+          Proof of concept: an AI companion, not a person or a clinical service. Replies can be wrong.
+        </p>
         <header className="today-header">
           <h1>{hello}</h1>
           <p>How was today?</p>
@@ -263,7 +390,7 @@ export function CompanionApp() {
               {messages.map((message) => (
                 <div key={message.id} className={`bubble ${message.role}${message.crisis ? " crisis" : ""}`}>
                   <span className="sr-only">{message.role === "user" ? "You said:" : "Companion said:"}</span>
-                  <p>{message.text}</p>
+                  <MessageText text={message.text} />
                   {message.crisis && (
                     <div className="crisis-detail">
                       <ul>
@@ -326,7 +453,7 @@ export function CompanionApp() {
                 </button>
                 <p id="message-hint" className="hint">
                   Enter to send, Shift+Enter for a new line.
-                  {draft.length > MAX_MESSAGE - 200 && ` ${MAX_MESSAGE - draft.length} characters left.`}
+                  {draft.length > MAX_MESSAGE - 100 && ` ${MAX_MESSAGE - draft.length} characters left.`}
                 </p>
               </form>
             )}
@@ -351,6 +478,16 @@ export function CompanionApp() {
                       maxLength={280}
                       onChange={(event) => setEdits((current) => ({ ...current, [proposal.id]: event.target.value }))}
                     />
+                    <label className="keep">
+                      <input
+                        type="checkbox"
+                        checked={keepChoices[proposal.id] ?? false}
+                        onChange={(event) =>
+                          setKeepChoices((current) => ({ ...current, [proposal.id]: event.target.checked }))
+                        }
+                      />{" "}
+                      Keep until I delete it (otherwise it expires automatically)
+                    </label>
                     <div className="actions">
                       <button type="button" className="primary small" onClick={() => void saveProposal(proposal)}>
                         Save
@@ -371,15 +508,34 @@ export function CompanionApp() {
               <ul className="items">
                 {memories.map((memory) => (
                   <li key={memory.id} className="memory">
-                    <span>{memory.text}</span>
-                    <button
-                      type="button"
-                      className="quiet small"
-                      onClick={() => void deleteMemory(memory)}
-                      aria-label={`Delete memory: ${memory.text}`}
-                    >
-                      Delete
-                    </button>
+                    <div>
+                      <span>{memory.text}</span>
+                      <span className="expiry">
+                        {memory.expiresAt
+                          ? `Expires ${dateFormat.format(new Date(memory.expiresAt))}`
+                          : "Kept until you delete it"}
+                      </span>
+                    </div>
+                    <div className="actions">
+                      {memory.expiresAt && (
+                        <button
+                          type="button"
+                          className="quiet small"
+                          onClick={() => void keepMemory(memory)}
+                          aria-label={`Keep memory: ${memory.text}`}
+                        >
+                          Keep
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="quiet small"
+                        onClick={() => void deleteMemory(memory)}
+                        aria-label={`Delete memory: ${memory.text}`}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

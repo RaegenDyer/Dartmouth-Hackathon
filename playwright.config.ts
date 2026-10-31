@@ -12,5 +12,7 @@ export default defineConfig({
     command: "npm run start -- --port 3100 --hostname 127.0.0.1",
     url: "http://127.0.0.1:3100/api/health",
     reuseExistingServer: !process.env.CI,
+    // OP-1 is tested with the kill switch on; UI flows mock the API instead.
+    env: { COMPANION_CHAT_DISABLED: "true" },
   },
 });

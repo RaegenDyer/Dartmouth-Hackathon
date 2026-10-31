@@ -1,11 +1,13 @@
 import { privateHeaders, requireMutationSession } from "@/lib/auth/server";
-import { getCompanion } from "@/lib/companion/server";
+import { chatDisabledResponse } from "@/lib/companion/http";
+import { getCompanion, isChatDisabled } from "@/lib/companion/server";
 import { createConversationSchema } from "@/lib/contracts";
 import { readJson } from "@/lib/http/request";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  if (isChatDisabled()) return chatDisabledResponse();
   const auth = await requireMutationSession(request);
   if ("response" in auth) return auth.response;
   const body = await readJson(request, createConversationSchema);

@@ -82,9 +82,13 @@ let expectedUserId;
 {
   const response = await fetch(`${base}/api/auth/anonymous`, {
     method: "POST",
-    headers: { origin: new URL(base).origin },
+    headers: { origin: new URL(base).origin, "content-type": "application/json" },
+    body: JSON.stringify({ ageConfirmed: true }),
   });
   absorbSetCookies(jar, response);
+  const authCookies = response.headers.getSetCookie().filter((line) => /auth-token/.test(line));
+  check("session cookies are HttpOnly and SameSite=Lax (AA-5)",
+    authCookies.length > 0 && authCookies.every((line) => /httponly/i.test(line) && /samesite=lax/i.test(line)));
   const body = await response.json().catch(() => ({}));
   check("app starts an anonymous session", response.status === 200 && body.isAnonymous === true,
     `status ${response.status}${body.error ? `: ${body.error.message}` : ""}`);
@@ -104,6 +108,7 @@ const supabase = createServerClient(
   check("app verifies the session cookie", body.authenticated === true && body.userId === expectedUserId,
     `status ${response.status}`);
   check("session is marked anonymous", body.isAnonymous === true);
+  check("age confirmation is in the verified token (AA-1)", body.ageConfirmed === true);
 }
 
 // 4. Forged token: corrupt the JWT signature and keep everything else.

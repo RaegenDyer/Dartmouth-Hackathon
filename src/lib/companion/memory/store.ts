@@ -28,11 +28,13 @@ export interface MemoryRepository {
   list(userId: string): Promise<Memory[]>;
   /** Unexpired memories only. This is the only source of model context. */
   listActive(userId: string, now: Date): Promise<Memory[]>;
-  create(userId: string, text: string, now: Date): Promise<Memory>;
+  create(userId: string, text: string, now: Date, expiresAt?: Date | null): Promise<Memory>;
   updateText(userId: string, id: string, text: string): Promise<Memory>;
   setExpiry(userId: string, id: string, expiresAt: Date | null, now: Date): Promise<Memory>;
   delete(userId: string, id: string): Promise<void>;
   deleteAllForUser(userId: string): Promise<void>;
+  /** MP-3 expiry job: removes every expired memory. Returns how many were removed. */
+  deleteExpired(now: Date): Promise<number>;
   /**
    * When the user last edited, expired, or deleted a memory. Conversation
    * history before this point is not sent to the model, so a deleted fact
@@ -81,7 +83,7 @@ export class InMemoryMemoryRepository implements MemoryRepository {
     return (await this.list(userId)).filter((memory) => !isExpired(memory, now));
   }
 
-  async create(userId: string, text: string, now: Date) {
+  async create(userId: string, text: string, now: Date, expiresAt: Date | null = null) {
     const count = (await this.list(userId)).length;
     if (count >= LIMITS.maxMemoriesPerUser) {
       throw new MemoryError("LIMIT_REACHED", `A user can keep at most ${LIMITS.maxMemoriesPerUser} memories.`);
@@ -91,7 +93,7 @@ export class InMemoryMemoryRepository implements MemoryRepository {
       userId,
       text: validateMemoryText(text),
       createdAt: new Date(now),
-      expiresAt: null,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
       editedByUser: false,
     };
     this.rows.set(memory.id, memory);
@@ -128,6 +130,17 @@ export class InMemoryMemoryRepository implements MemoryRepository {
       if (memory.userId === userId) this.rows.delete(id);
     }
     this.changes.delete(userId);
+  }
+
+  async deleteExpired(now: Date) {
+    let removed = 0;
+    for (const [id, memory] of this.rows) {
+      if (isExpired(memory, now)) {
+        this.rows.delete(id);
+        removed += 1;
+      }
+    }
+    return removed;
   }
 
   private owned(userId: string, id: string): Memory {

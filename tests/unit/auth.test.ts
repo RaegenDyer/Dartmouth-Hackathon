@@ -16,7 +16,17 @@ describe("verified claims", () => {
     expect(sessionFromVerifiedClaims({ sub: userId, role: "authenticated", is_anonymous: true })).toEqual({
       actor: { userId },
       isAnonymous: true,
+      ageConfirmed: false,
+      sessionId: null,
     });
+    expect(
+      sessionFromVerifiedClaims({
+        sub: userId,
+        role: "authenticated",
+        session_id: "s1",
+        user_metadata: { age_confirmed: true },
+      }),
+    ).toMatchObject({ ageConfirmed: true, sessionId: "s1" });
   });
 
   it("rejects missing, malformed, or non-user claims", () => {
@@ -60,7 +70,7 @@ describe("auth routes", () => {
     const response = await GET();
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(await response.json()).toEqual({ authenticated: true, userId, isAnonymous: false });
+    expect(await response.json()).toEqual({ authenticated: true, userId, isAnonymous: false, ageConfirmed: false });
   });
 
   it("treats a failed verification as signed out", async () => {

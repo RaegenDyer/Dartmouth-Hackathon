@@ -27,7 +27,7 @@ async function setup(llm?: LlmAdapter) {
 async function approveFirst(app: Awaited<ReturnType<typeof setup>>["app"], userId = "u1") {
   const [proposal] = await app.deps.proposals.listPending(userId);
   if (!proposal) throw new Error("expected a pending proposal");
-  return approveProposal(app.deps, userId, proposal.id, { text: proposal.text, expiresAt: null }, new Date());
+  return approveProposal(app.deps, userId, proposal.id, { text: proposal.text, keep: true }, new Date());
 }
 
 describe("respond()", () => {
@@ -62,9 +62,9 @@ describe("respond()", () => {
     expect(result).toMatchObject({ safety_triggered: true, route: "safety", memories_used: [] });
     expect(result.reply_text).toContain("988");
     expect(result.crisis?.emergencyContact?.name).toBe("Ana");
-    expect(app.safetyEvents).toHaveLength(1);
-    expect(JSON.stringify(app.safetyEvents)).not.toContain("Hanover");
-    expect(app.safetyEvents[0]).toMatchObject({ sessionId: session.id, stage: "input" });
+    expect(app.logEvents).toHaveLength(1);
+    expect(JSON.stringify(app.logEvents)).not.toContain("Hanover");
+    expect(app.logEvents[0]).toMatchObject({ event: "safety_triggered", sessionId: session.id });
     const stored = await app.deps.messages.listForSession(session.id);
     expect(stored.some((m) => m.text.includes("Hanover"))).toBe(false);
     expect(await app.deps.memories.list("u1")).toEqual([]);
@@ -76,7 +76,7 @@ describe("respond()", () => {
   it("routes unsafe model output to the safety path", async () => {
     const { app, session } = await setup(fixed("You should hurt yourself."));
     expect((await app.respond(session.id, "hello")).safety_triggered).toBe(true);
-    expect(app.safetyEvents[0]?.stage).toBe("output");
+    expect(app.logEvents[0]).toMatchObject({ event: "safety_triggered", sessionId: session.id });
   });
 
   it("redirects only-connection statements toward people", async () => {
@@ -161,7 +161,7 @@ describe("respond()", () => {
       app.deps,
       "u1",
       hanover?.id as string,
-      { text: "You live near Hanover.", expiresAt: null },
+      { text: "You live near Hanover.", keep: true },
       new Date(),
     );
     expect(saved.text).toBe("You live near Hanover.");
@@ -177,9 +177,9 @@ describe("respond()", () => {
       memory_proposals: [proposal],
     } = await app.respond(session.id, "I live in Hanover.");
     const id = proposal?.id as string;
-    await expect(
-      approveProposal(app.deps, "u2", id, { text: "stolen", expiresAt: null }, new Date()),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(approveProposal(app.deps, "u2", id, { text: "stolen", keep: true }, new Date())).rejects.toMatchObject(
+      { code: "NOT_FOUND" },
+    );
     await expect(dismissProposal(app.deps, "u2", id)).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(await app.deps.proposals.listPending("u1")).toHaveLength(1);
   });

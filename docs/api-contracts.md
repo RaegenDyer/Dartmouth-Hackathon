@@ -9,9 +9,10 @@ are in `src/lib/contracts/index.ts`.
 
 ## Common rules
 
+- Private routes also require the age confirmation (AA-1) and an active, non-idle session (AA-3); see [guardrails](guardrails.md).
 - Verify Supabase identity on every private route. Never accept a trusted user ID,
   role, model name, system instruction, or message history from a browser request.
-- Accept JSON with strict schemas. Initial text limit: 4,000 characters per user
+- Accept JSON with strict schemas. Text limit: 1,000 characters per user
   message; initial JSON body cap: 16 KiB. Reject oversized bodies before reading
   them fully. A browser-side limit is a convenience, not the server's limit.
 - Persisted text rejects NUL characters and unpaired UTF-16 surrogates before
@@ -34,18 +35,21 @@ are in `src/lib/contracts/index.ts`.
 | `GET /api/health` | `{status:"ok",service:"dartmouth-hackathon",stage:"foundation"}` | Implemented; public liveness only |
 | `GET /api/auth/session` | `{authenticated:false}` or `{authenticated:true,userId,isAnonymous}` from verified claims; 503 if Supabase is not configured | Implemented |
 | `POST /api/auth/sign-out` | Same-origin only (403 otherwise); ends this browser's session; 204 | Implemented |
-| `POST /api/auth/anonymous` | Same-origin; starts (or returns) an anonymous session; 503 if anonymous sign-in is off | Implemented |
+| `POST /api/auth/anonymous` | Same-origin; body `{ageConfirmed:true}` (AA-1); starts or upgrades an anonymous session; 10 per IP per 10 min; 503 if anonymous sign-in is off | Implemented |
+| `GET /api/companion/status` | Public `{chatEnabled}` for the OP-1 kill switch | Implemented |
+| `DELETE /api/account` | Same-origin; deletes the user's app data (DP-5) and signs out; 204 | Local |
 | `GET /api/profile` | Current actor's profile and version | Planned |
 | `PATCH /api/profile` | `updateProfileSchema`; saved profile | Planned |
 | `POST /api/conversations` | `createConversationSchema`; `{conversationId}` (no version yet) | Local |
 | `GET /api/conversations/:id/messages` | Cursor-paginated visible history | Planned |
-| `POST /api/chat` | `sendMessageSchema`; one JSON reply `{reply,route,safetyTriggered,crisis,memoriesUsed,memoryProposals,socialAction}` instead of SSE; repeated `clientRequestId` returns the same turn | Local |
+| `POST /api/chat` | `sendMessageSchema`; one JSON reply `{reply,route,safetyTriggered,conversationEnded,crisis,memoriesUsed,memoryProposals,socialAction}` instead of SSE; 503 `chatDisabled` when the kill switch is on; repeated `clientRequestId` returns the same turn | Local |
 | `GET /api/memory-proposals` | Pending proposals owned by actor | Local |
-| `POST /api/memory-proposals/:id/accept` | `{content, expiresAt}` (no `expectedVersion` yet); approved memory | Local |
+| `POST /api/memory-proposals/:id/accept` | `{content, keep}` (no `expectedVersion` yet); expires after the policy period unless `keep` (MP-3); approved memory | Local |
 | `POST /api/memory-proposals/:id/dismiss` | No body yet; 204 | Local |
 | `GET /api/memories` | Approved, unexpired memories (no versions yet) | Local |
 | `PATCH /api/memories/:id` | `updateMemorySchema`; saved memory and context revision | Planned |
 | `DELETE /api/memories/:id` | No body yet; 204 | Local |
+| `POST /api/memories/:id/keep` | Removes the memory's expiry (MP-3) | Local |
 | `GET /api/social-actions` | Actor's proposals and accepted/completed actions | Planned |
 | `PATCH /api/social-actions/:id` | `updateSocialActionSchema`; saved action | Planned |
 

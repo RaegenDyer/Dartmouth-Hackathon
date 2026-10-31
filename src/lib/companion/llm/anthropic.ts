@@ -17,7 +17,7 @@ export class AnthropicLlmAdapter implements LlmAdapter {
     const response = await this.config.client.messages.create(
       {
         model: this.config.model,
-        max_tokens: 400,
+        max_tokens: 800,
         system,
         messages: [...request.history, { role: "user", content: request.userMessage }],
       },

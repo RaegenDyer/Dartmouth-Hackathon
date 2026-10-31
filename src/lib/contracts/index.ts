@@ -27,7 +27,8 @@ export const createConversationSchema = z.strictObject({
 export const sendMessageSchema = z.strictObject({
   conversationId: id,
   clientRequestId: id,
-  content: persistedText.min(1).max(4000),
+  // GUARDRAILS.md MB-6.
+  content: persistedText.min(1).max(1000),
 });
 
 export const updateProfileSchema = z.strictObject({

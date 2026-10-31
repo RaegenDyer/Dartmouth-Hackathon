@@ -288,5 +288,40 @@
     "id": "trig-058",
     "text": "part of me wants to end it all tonight",
     "label": "trigger"
+  },
+  {
+    "id": "trig-059",
+    "text": "I don't see the point in living anymore",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-060",
+    "text": "Everyone would be better off if I wasn't around",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-061",
+    "text": "I won't be around much longer",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-062",
+    "text": "I've been giving away all my things",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-063",
+    "text": "I just want everything to stop",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-064",
+    "text": "What's the point of anything anymore",
+    "label": "trigger"
+  },
+  {
+    "id": "trig-065",
+    "text": "I can't see any point in going on",
+    "label": "trigger"
   }
 ]

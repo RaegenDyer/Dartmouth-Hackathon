@@ -4,15 +4,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 let currentUser: string | null = null;
+let ageConfirmed = true;
 const auth = {
   getClaims: vi.fn(async () => ({
-    data: currentUser ? { claims: { sub: currentUser, role: "authenticated", is_anonymous: true } } : null,
+    data: currentUser
+      ? {
+          claims: {
+            sub: currentUser,
+            role: "authenticated",
+            is_anonymous: true,
+            user_metadata: { age_confirmed: ageConfirmed },
+          },
+        }
+      : null,
     error: null,
   })),
-  signInAnonymously: vi.fn(async () => {
+  signInAnonymously: vi.fn(async (input: { options: { data: { age_confirmed: boolean } } }) => {
     currentUser = alice;
+    ageConfirmed = input.options.data.age_confirmed;
     return { error: null };
   }),
+  signOut: vi.fn(async () => ({ error: null })),
 };
 vi.mock("@/lib/supabase/server", () => ({ createRouteSupabaseClient: async () => ({ auth }) }));
 
@@ -38,6 +50,8 @@ async function routes() {
     dismiss: await import("@/app/api/memory-proposals/[id]/dismiss/route"),
     memories: await import("@/app/api/memories/route"),
     memory: await import("@/app/api/memories/[id]/route"),
+    account: await import("@/app/api/account/route"),
+    status: await import("@/app/api/companion/status/route"),
   };
 }
 
@@ -55,8 +69,10 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test-only");
   vi.stubEnv("LLM_ADAPTER", "mock");
-  delete (globalThis as { __companion?: unknown }).__companion;
+  delete (globalThis as { __companionStore?: unknown }).__companionStore;
+  delete (globalThis as { __anonLimiter?: unknown }).__anonLimiter;
   currentUser = null;
+  ageConfirmed = true;
 });
 
 describe("companion routes", () => {
@@ -71,9 +87,25 @@ describe("companion routes", () => {
 
   it("starts an anonymous session", async () => {
     const { anonymous } = await routes();
-    const response = await anonymous.POST(post("/api/auth/anonymous"));
-    expect(await response.json()).toEqual({ authenticated: true, userId: alice, isAnonymous: true });
-    expect(auth.signInAnonymously).toHaveBeenCalled();
+    expect((await anonymous.POST(post("/api/auth/anonymous"))).status).toBe(400);
+    expect((await anonymous.POST(post("/api/auth/anonymous", { ageConfirmed: false }))).status).toBe(400);
+    const response = await anonymous.POST(post("/api/auth/anonymous", { ageConfirmed: true }));
+    expect(await response.json()).toEqual({
+      authenticated: true,
+      userId: alice,
+      isAnonymous: true,
+      ageConfirmed: true,
+    });
+    expect(auth.signInAnonymously).toHaveBeenCalledWith({ options: { data: { age_confirmed: true } } });
+  });
+
+  it("AA-1: refuses companion routes until the user confirms their age", async () => {
+    currentUser = alice;
+    ageConfirmed = false;
+    const { conversations } = await routes();
+    const response = await conversations.POST(post("/api/conversations", { scenario: "check_in" }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ ageRequired: true });
   });
 
   it("chats, proposes a memory, and saves it only after approval", async () => {
@@ -90,7 +122,7 @@ describe("companion routes", () => {
 
     const id = result.memoryProposals[0]?.id as string;
     const accepted = await accept.POST(
-      post(`/api/memory-proposals/${id}/accept`, { content: "You live near Hanover.", expiresAt: null }),
+      post(`/api/memory-proposals/${id}/accept`, { content: "You live near Hanover.", keep: false }),
       params(id),
     );
     expect(accepted.status).toBe(200);
@@ -116,7 +148,7 @@ describe("companion routes", () => {
     expect((await say(conversationId, "hello")).status).toBe(404);
     const { accept, dismiss, proposals } = await routes();
     const stolen = await accept.POST(
-      post(`/api/memory-proposals/${proposalId}/accept`, { content: "x", expiresAt: null }),
+      post(`/api/memory-proposals/${proposalId}/accept`, { content: "x", keep: true }),
       params(proposalId),
     );
     expect(stolen.status).toBe(404);
@@ -140,11 +172,58 @@ describe("companion routes", () => {
   it("rejects oversized and malformed bodies", async () => {
     currentUser = alice;
     const conversationId = await newConversation();
-    expect((await say(conversationId, "x".repeat(4001))).status).toBe(400);
+    expect((await say(conversationId, "x".repeat(1001))).status).toBe(400);
     const { chat } = await routes();
     const extra = post("/api/chat", { conversationId, clientRequestId: randomUUID(), content: "hi", userId: bob });
     expect((await chat.POST(extra)).status).toBe(400);
     const huge = post("/api/chat", { conversationId, clientRequestId: randomUUID(), content: "y".repeat(20_000) });
     expect((await chat.POST(huge)).status).toBe(400);
+  });
+
+  it("DP-5: account deletion removes messages, memories, and suggestions, then signs out", async () => {
+    currentUser = alice;
+    const conversationId = await newConversation();
+    await say(conversationId, "I live in Hanover. I like chess.");
+    const { account } = await routes();
+    const { getCompanion } = await import("@/lib/companion/server");
+    const companion = getCompanion();
+    const [proposal] = await companion.deps.proposals.listPending(alice);
+    await companion.deps.memories.create(alice, proposal?.text ?? "x", new Date());
+
+    const response = await account.DELETE(
+      new Request(`${origin}/api/account`, { method: "DELETE", headers: { origin } }),
+    );
+    expect(response.status).toBe(204);
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(await companion.deps.messages.listForSession(conversationId)).toEqual([]);
+    expect(await companion.deps.memories.list(alice)).toEqual([]);
+    expect(await companion.deps.proposals.listPending(alice)).toEqual([]);
+    expect(await companion.deps.sessions.listForUser(alice)).toEqual([]);
+  });
+
+  it("OP-1: the kill switch turns off chat without a code change", async () => {
+    currentUser = alice;
+    const conversationId = await newConversation();
+    vi.stubEnv("COMPANION_CHAT_DISABLED", "true");
+    const { status, conversations } = await routes();
+    expect(await status.GET().json()).toEqual({ chatEnabled: false });
+    const chat = await say(conversationId, "hello");
+    expect(chat.status).toBe(503);
+    expect(await chat.json()).toMatchObject({ chatDisabled: true });
+    expect((await conversations.POST(post("/api/conversations", { scenario: "check_in" }))).status).toBe(503);
+    vi.stubEnv("COMPANION_CHAT_DISABLED", "false");
+    expect(await status.GET().json()).toEqual({ chatEnabled: true });
+  });
+
+  it("AA-2: limits new anonymous sessions per IP", async () => {
+    const { anonymous } = await routes();
+    const start = () =>
+      anonymous.POST(post("/api/auth/anonymous", { ageConfirmed: true }, { origin, "x-forwarded-for": "203.0.113.9" }));
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      currentUser = null;
+      expect((await start()).status).toBe(200);
+    }
+    currentUser = null;
+    expect((await start()).status).toBe(429);
   });
 });

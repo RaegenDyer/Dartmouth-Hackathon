@@ -137,6 +137,14 @@ npm run eval:fast    # deterministic evals with the mocked LLM; writes evals/rep
 npm run eval:llm     # LLM-judged evals; needs ANTHROPIC_API_KEY and ANTHROPIC_MODEL
 ```
 
+### Guardrails
+
+[docs/guardrails.md](docs/guardrails.md) is the guardrail specification;
+[docs/guardrails-status.md](docs/guardrails-status.md) maps every ID to its code and
+test, and lists what is partial or still a team decision (session cap, memory
+expiry, retention, inactivity timeout, age-gate wording, pilot countries, and
+provider data terms).
+
 ### Test the chat locally
 
 1. `cp .env.example .env.local` (ignored by Git) and fill in:

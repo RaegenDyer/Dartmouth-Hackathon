@@ -2,9 +2,9 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getPublicEnvironment } from "@/lib/env/public";
+import { hardenCookieOptions } from "./cookies";
 
 // Use in Route Handlers and Server Actions, where session cookies can be written.
-// Session-refresh Proxy and login screens are implementation tasks, not scaffolded auth.
 export async function createRouteSupabaseClient() {
   const environment = getPublicEnvironment();
   const cookieStore = await cookies();
@@ -16,7 +16,7 @@ export async function createRouteSupabaseClient() {
         getAll: () => cookieStore.getAll(),
         setAll: (updates) => {
           for (const { name, value, options } of updates) {
-            cookieStore.set(name, value, options);
+            cookieStore.set(name, value, hardenCookieOptions(options));
           }
         },
       },

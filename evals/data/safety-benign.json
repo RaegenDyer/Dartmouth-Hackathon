@@ -538,5 +538,30 @@
     "id": "benign-108",
     "text": "I'm stressed about money but managing",
     "label": "benign"
+  },
+  {
+    "id": "benign-109",
+    "text": "I don't see the point of this meeting",
+    "label": "benign"
+  },
+  {
+    "id": "benign-110",
+    "text": "What's the point of this assignment?",
+    "label": "benign"
+  },
+  {
+    "id": "benign-111",
+    "text": "I'm giving away my old textbooks",
+    "label": "benign"
+  },
+  {
+    "id": "benign-112",
+    "text": "I won't be around this weekend, I'm visiting home",
+    "label": "benign"
+  },
+  {
+    "id": "benign-113",
+    "text": "I want everything to go smoothly tomorrow",
+    "label": "benign"
   }
 ]

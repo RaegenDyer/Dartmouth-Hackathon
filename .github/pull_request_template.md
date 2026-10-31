@@ -28,6 +28,15 @@
 - [ ] No boundary rule, safety trigger list, or memory rule changed
 - [ ] A rule changed. The reason is explained below, and the eval datasets in `evals/data` were updated to match
 
+## Guardrails ([docs/guardrails.md](../docs/guardrails.md))
+
+- [ ] No guardrail changed, or the changed ID is named below with its updated test or eval
+- [ ] CS-8: any missed crisis phrasing was added to `evals/data/safety-triggers.json` before the code change
+- [ ] DB-4: no streaks, badges, or return-notifications added
+- [ ] IS-6: no audience screening questions asked in chat
+- [ ] CD-3/CD-4/CD-5: copy makes no claim to reduce loneliness or prevent harm, never says the emergency contact is notified, and avoids "absolute", "100 percent private", "never accessed", and "unbreakable"
+- [ ] [docs/guardrails-status.md](../docs/guardrails-status.md) updated if a status changed
+
 ## Frontend style decision
 
 - [ ] No user-facing UI changes

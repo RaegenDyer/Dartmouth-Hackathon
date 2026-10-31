@@ -51,6 +51,53 @@ const REVEAL_REQUEST: readonly RegExp[] = [
   /\b(?:dump|print|show|reveal) (?:the )?(?:raw )?(?:memory|memories) (?:block|context|data)\b/,
 ];
 
+// MB-3: requests for medical, legal, or financial advice get a fixed handoff.
+// Phrasings are in evals/data/advice.json (with benign look-alikes).
+export type AdviceCategory = "medical" | "legal" | "financial";
+const ADVICE_REQUEST: readonly { category: AdviceCategory; pattern: RegExp }[] = [
+  {
+    category: "medical",
+    pattern:
+      /\b(?:should i (?:take|stop taking|double|mix|skip) (?:my |the |some |more )?(?:\w+ )?(?:medication|medicine|meds|pills?|dose|antibiotics?|ibuprofen|tylenol|advil|melatonin|antidepressants?|inhaler)|how (?:much|many) (?:\w+ ){0,2}(?:should|can) i take|(?:what|which) (?:medication|medicine|meds|pill|dose|dosage) should i|is it safe to (?:take|mix|combine)|do i have (?:a |an )?(?:\w+ )?(?:infection|disease|disorder|condition|cancer|diabetes|std|sti|adhd|depression|concussion)|(?:can you )?diagnose (?:me|my|this)|what(?:'s| is) wrong with my (?:body|health|heart|chest|stomach|head)|symptoms of (?:a |an )?\w+)\b/,
+  },
+  {
+    category: "legal",
+    pattern:
+      /\b(?:is it (?:il)?legal (?:to|for|if)|can i (?:sue|be sued|get sued|press charges|legally)|should i (?:sue|press charges|sign (?:the|this|my) (?:lease|contract)|get a lawyer)|can my (?:landlord|employer|boss|school) legally|(?:give me |need )?legal advice|what are my (?:legal |tenant )?rights|(?:visa|immigration) (?:status|rules|question|advice))\b/,
+  },
+  {
+    category: "financial",
+    pattern:
+      /\b(?:should i (?:invest|buy|sell)(?: in)? (?:stocks?|shares|crypto|bitcoin|bonds|index funds?|etfs?|options)|(?:what|which) (?:stocks?|crypto|coins?|funds?|etfs?) should i (?:buy|invest in)|(?:give me |need )?financial advice|how should i (?:invest|file my taxes|do my taxes)|should i (?:take out|get) (?:a |another )?(?:loan|mortgage|credit card|payday loan)|tax (?:advice|deductions?))\b/,
+  },
+];
+
+export function adviceCategory(text: string): AdviceCategory | null {
+  const normalized = normalizeForMatching(text);
+  return ADVICE_REQUEST.find(({ pattern }) => pattern.test(normalized))?.category ?? null;
+}
+
+const ADVICE_SOURCE: Record<AdviceCategory, string> = {
+  medical: "A doctor, pharmacist, or your campus health service",
+  legal: "A lawyer, a legal aid office, or your school's student legal services",
+  financial: "A qualified financial advisor, your bank, or your school's financial aid office",
+};
+
+export function adviceReply(category: AdviceCategory): string {
+  return `I'm an AI, so I can't give ${category} advice, and I don't want to point you the wrong way. ${ADVICE_SOURCE[category]} is the right person to ask. Is there anything else on your mind today?`;
+}
+
+// DB-1 / MB-2: the companion never claims to miss the user, to love them, to be
+// in a relationship with them, or to be a licensed professional.
+const BOUNDARY_CLAIM_SENTENCE =
+  /[^.!?\n]*\b(?:i(?:'ll| will)? miss(?:ed)? you|i(?:'ve| have)? (?:been )?missing you|i (?:love|adore) you|i(?:'m| am) (?:falling )?in love with you|i have (?:real |strong |deep )?feelings for you|(?:our|we have a|we share a) (?:special |real |unique )?(?:relationship|bond)|i(?:'m| am) (?:your|a|an) (?:licensed |certified |trained |real )?(?:therapist|counsell?or|psychologist|psychiatrist|doctor|physician|nurse|lawyer|financial advisor)|as (?:a|your) (?:licensed |certified |trained |real )?(?:therapist|counsell?or|psychologist|psychiatrist|doctor|physician))\b[^.!?\n]*[.!?]?/gi;
+
+/** Removes sentences that claim feelings, a relationship, or professional status. */
+export function stripBoundaryClaims(reply: string): string {
+  const stripped = reply.replace(BOUNDARY_CLAIM_SENTENCE, " ").replace(/\s+/g, " ").trim();
+  return stripped || DEPENDENCE_REPLY;
+}
+
 const HUMAN_CLAIM =
   /\b(?:i(?:'m| am)|i was born|as a) (?:a |an )?(?:real |actual )?(?:human|person|woman|man|girl|guy)\b/;
 const NEGATED_HUMAN_CLAIM = /\b(?:not|never|n't) (?:a |an )?(?:real |actual )?(?:human|person)\b/;

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { publicEnvironmentSchema } from "@/lib/env/public";
+import { hardenCookieOptions } from "./cookies";
 
 // Refreshes the Supabase session cookie before Server Components and Route
 // Handlers run. This is not authorization: private routes still verify identity.
@@ -23,7 +24,7 @@ export async function refreshSupabaseSession(request: NextRequest) {
           for (const { name, value } of updates) request.cookies.set(name, value);
           response = NextResponse.next({ request });
           for (const { name, value, options } of updates) {
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, hardenCookieOptions(options));
           }
           // Supabase supplies no-cache headers so refreshed cookies are not shared.
           for (const [key, value] of Object.entries(headers ?? {})) {

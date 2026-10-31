@@ -3,23 +3,28 @@ import {
   DEPENDENCE_REPLY,
   ONLY_CONNECTION_REPLY,
   REVEAL_REFUSAL,
+  adviceCategory,
+  adviceReply,
   enforceAiStatus,
   isDependenceInvite,
   isHumanQuestion,
   isOnlyConnectionStatement,
   isRevealRequest,
+  stripBoundaryClaims,
   stripLeakedContext,
   stripPermanencePromises,
 } from "../boundary/rules";
-import { enforceMemoryDisclosure } from "../disclosure/enforce";
-import { LIMITS } from "../limits";
+import { enforceInteractionStyle } from "../boundary/style";
+import { contentWords, enforceMemoryDisclosure } from "../disclosure/enforce";
+import { DEFAULT_POLICY, LIMITS, type GuardrailPolicy } from "../limits";
 import { LEAK_MARKERS, generateWithTimeout, type LlmAdapter } from "../llm/adapter";
+import type { Logger } from "../log";
 import { extractMemoryCandidates } from "../memory/capture";
 import type { MemoryProposalRepository } from "../memory/proposals";
 import { MemoryError, type Memory, type MemoryRepository } from "../memory/store";
-import { checkReply, checkUserMessage, type SafetyCategory } from "../safety/classifier";
+import { patternClassifier, runSafetyCheck, type SafetyClassifier } from "../safety/classifier";
 import type { EmergencyContactRepository } from "../safety/contact";
-import { buildCrisisView, type CrisisView, type SafetyLogger } from "../safety/crisis";
+import { buildCrisisView, type CrisisView } from "../safety/crisis";
 import { claimWeeklySuggestion, formatSuggestion, type SocialActionRepository } from "../scheduler/weekly";
 import type { ChatSession, MessageRepository, SessionRepository } from "./repositories";
 
@@ -31,11 +36,18 @@ export interface ConversationDeps {
   socialActions: SocialActionRepository;
   contacts: EmergencyContactRepository;
   llm: LlmAdapter;
-  logSafety: SafetyLogger;
+  /** All logging goes through the scrubbed Logger (DP-3). */
+  log: Logger;
+  /** Defaults to the deterministic pattern classifier. */
+  safety?: SafetyClassifier;
+  policy?: GuardrailPolicy;
+  /** DB-5 per-user redirect counts; pass a shared map to keep counts across service instances. */
+  redirectCounts?: Map<string, number>;
   now?: () => Date;
 }
 
-export type ReplyRoute = "normal" | "safety" | "only_connection" | "dependence" | "reveal_refused";
+export type ReplyRoute =
+  "normal" | "safety" | "session_cap" | "only_connection" | "dependence" | "advice_refused" | "reveal_refused";
 
 export interface RespondResult {
   reply_text: string;
@@ -43,9 +55,16 @@ export interface RespondResult {
   safety_triggered: boolean;
   route: ReplyRoute;
   crisis: CrisisView | null;
+  /** True when this session accepts no further normal turns (safety or session cap). */
+  conversation_ended: boolean;
   social_action: string | null;
   /** Suggested memories awaiting the user's review. Nothing is saved until approved. */
   memory_proposals: { id: string; text: string }[];
+}
+
+export interface RespondOptions {
+  /** ISO country code from the hosting platform when known (CS-5). */
+  country?: string | null;
 }
 
 export class ConversationError extends Error {
@@ -59,18 +78,23 @@ export class ConversationError extends Error {
 
 const HIDDEN_CRISIS_MESSAGE = "[Message hidden: safety resources were shown]";
 
+// DB-3. No question, so it never conflicts with IS-1/IS-2.
+export const SESSION_CAP_REPLY =
+  "We've been talking for a while, so I'm going to end this session here. This could be a good moment for a break, and maybe to message or see one person you know today. You can start a new conversation later.";
+
 export function createConversationService(deps: ConversationDeps) {
   const now = deps.now ?? (() => new Date());
+  const policy = deps.policy ?? DEFAULT_POLICY;
+  const safety = deps.safety ?? patternClassifier;
+  /** DB-5: redirect counts per user, logged without text. */
+  const redirectCounts = deps.redirectCounts ?? new Map<string, number>();
 
-  async function crisisTurn(
-    session: ChatSession,
-    stage: "input" | "output",
-    category: SafetyCategory | null,
-  ): Promise<RespondResult> {
+  async function crisisTurn(session: ChatSession, country: string | null): Promise<RespondResult> {
     const at = now();
-    deps.logSafety({ event: "safety_triggered", at: at.toISOString(), sessionId: session.id, stage, category });
-    const crisis = buildCrisisView(await deps.contacts.getForCrisisView(session.userId));
-    // The crisis message text is never persisted and never becomes a memory.
+    // CS-7: timestamp and session ID only.
+    deps.log({ event: "safety_triggered", at: at.toISOString(), sessionId: session.id });
+    const crisis = buildCrisisView(await deps.contacts.getForCrisisView(session.userId), country);
+    // CS-6: the crisis message text is never persisted and never becomes a memory.
     await deps.messages.append({
       sessionId: session.id,
       userId: session.userId,
@@ -94,9 +118,50 @@ export function createConversationService(deps: ConversationDeps) {
       safety_triggered: true,
       route: "safety",
       crisis,
+      conversation_ended: true,
       social_action: null,
       memory_proposals: [],
     };
+  }
+
+  async function sessionCapTurn(session: ChatSession, text: string): Promise<RespondResult> {
+    const at = now();
+    if (!session.endedBySessionCap) {
+      deps.log({ event: "session_cap_reached", at: at.toISOString(), sessionId: session.id });
+      await deps.sessions.update({ ...session, endedBySessionCap: true });
+    }
+    await deps.messages.append({
+      sessionId: session.id,
+      userId: session.userId,
+      role: "user",
+      text,
+      createdAt: at,
+      safety: false,
+    });
+    await deps.messages.append({
+      sessionId: session.id,
+      userId: session.userId,
+      role: "assistant",
+      text: SESSION_CAP_REPLY,
+      createdAt: at,
+      safety: false,
+    });
+    return {
+      reply_text: SESSION_CAP_REPLY,
+      memories_used: [],
+      safety_triggered: false,
+      route: "session_cap",
+      crisis: null,
+      conversation_ended: true,
+      social_action: null,
+      memory_proposals: [],
+    };
+  }
+
+  function logRedirect(session: ChatSession, route: ReplyRoute, at: Date) {
+    const count = (redirectCounts.get(session.userId) ?? 0) + 1;
+    redirectCounts.set(session.userId, count);
+    deps.log({ event: "boundary_redirect", at: at.toISOString(), userId: session.userId, route, countForUser: count });
   }
 
   /** Turns the model may see: this session, after the latest memory change or expiry. */
@@ -110,7 +175,20 @@ export function createConversationService(deps: ConversationDeps) {
       .map((message) => ({ role: message.role, content: message.text }));
   }
 
-  async function respond(sessionId: string, userMessage: string): Promise<RespondResult> {
+  /**
+   * IS-5: the model only sees memories related to what the user just said
+   * (no unprompted check-ins), and each memory at most once per session.
+   */
+  function eligibleMemories(active: Memory[], text: string, session: ChatSession) {
+    const words = new Set(contentWords(text));
+    const referenced = new Set(session.memoriesReferenced);
+    return active.filter(
+      (memory) => !referenced.has(memory.id) && contentWords(memory.text).some((word) => words.has(word)),
+    );
+  }
+
+  async function respond(sessionId: string, userMessage: string, options: RespondOptions = {}): Promise<RespondResult> {
+    const country = options.country ?? null;
     const session = await deps.sessions.get(sessionId);
     if (!session) throw new ConversationError("SESSION_NOT_FOUND", "Session not found.");
     const text = userMessage.trim();
@@ -118,16 +196,26 @@ export function createConversationService(deps: ConversationDeps) {
       throw new ConversationError("INVALID_MESSAGE", `Messages must be 1-${LIMITS.maxMessageLength} characters.`);
     }
 
-    // Safety pre-check runs before anything else, including persistence.
-    const inputCheck = checkUserMessage(text);
-    if (inputCheck.triggered) return crisisTurn(session, "input", inputCheck.category);
-    if (session.endedBySafety) return crisisTurn(session, "input", null);
+    // CS-1/CS-2/CS-4: the safety pre-check runs first on every message, including
+    // the first of each session, before persistence. Errors and timeouts fail closed.
+    const inputCheck = await runSafetyCheck(() => safety.checkUserMessage(text), LIMITS.safetyCheckTimeoutMs);
+    if (inputCheck.failed) deps.log({ event: "safety_check_failed", at: now().toISOString(), sessionId: session.id });
+    if (inputCheck.triggered || session.endedBySafety) return crisisTurn(session, country);
+
+    // DB-3: session length cap.
+    if (session.endedBySessionCap || now().getTime() - session.startedAt.getTime() >= policy.sessionCapMs) {
+      return sessionCapTurn(session, text);
+    }
 
     const at = now();
     const allMemories = await deps.memories.list(session.userId);
     const active = allMemories.filter((memory) => !memory.expiresAt || memory.expiresAt.getTime() > at.getTime());
+    const priorReplies = (await deps.messages.listForSession(session.id))
+      .filter((message) => message.role === "assistant" && !message.safety)
+      .map((message) => message.text);
 
     const askedIfHuman = isHumanQuestion(text);
+    const advice = adviceCategory(text);
     let route: ReplyRoute = "normal";
     let reply: string;
     let memoriesUsed: string[] = [];
@@ -137,26 +225,41 @@ export function createConversationService(deps: ConversationDeps) {
     } else if (isOnlyConnectionStatement(text)) {
       route = "only_connection";
       reply = ONLY_CONNECTION_REPLY;
+      logRedirect(session, route, at);
     } else if (isDependenceInvite(text)) {
       route = "dependence";
       reply = DEPENDENCE_REPLY;
+      logRedirect(session, route, at);
+    } else if (advice) {
+      route = "advice_refused";
+      reply = adviceReply(advice);
     } else {
+      const eligible = eligibleMemories(active, text, session);
       const generated = await generateWithTimeout(deps.llm, {
         history: await contextHistory(session, allMemories, at),
         userMessage: text,
-        memories: active.map(({ id, text: memoryText }) => ({ id, text: memoryText })),
+        memories: eligible.map(({ id, text: memoryText }) => ({ id, text: memoryText })),
         tone: session.tone,
       });
-      const outputCheck = checkReply(generated.text);
-      if (outputCheck.triggered) return crisisTurn(session, "output", outputCheck.category);
+      // CS-1/CS-2: post-check on the model reply, failing closed.
+      const outputCheck = await runSafetyCheck(() => safety.checkReply(generated.text), LIMITS.safetyCheckTimeoutMs);
+      if (outputCheck.failed)
+        deps.log({ event: "safety_check_failed", at: now().toISOString(), sessionId: session.id });
+      if (outputCheck.triggered) return crisisTurn(session, country);
       reply = stripLeakedContext(generated.text, LEAK_MARKERS);
       reply = stripPermanencePromises(reply);
+      reply = stripBoundaryClaims(reply);
       reply = enforceAiStatus(reply, askedIfHuman);
-      const disclosed = enforceMemoryDisclosure(reply, generated.memoriesUsed, active);
+      reply = enforceInteractionStyle(reply, { userMessage: text, priorReplies });
+      const disclosed = enforceMemoryDisclosure(reply, generated.memoriesUsed, eligible);
       reply = disclosed.replyText;
       memoriesUsed = disclosed.memoriesUsed;
     }
-    if (route !== "normal") reply = enforceAiStatus(reply, askedIfHuman);
+    if (route !== "normal") {
+      reply = enforceAiStatus(reply, askedIfHuman);
+      // IS-1/IS-2 apply to fixed replies too, except DB-2's required question about one person.
+      if (route !== "only_connection") reply = enforceInteractionStyle(reply, { userMessage: text, priorReplies });
+    }
 
     let socialAction: string | null = null;
     if (route === "normal") {
@@ -172,10 +275,16 @@ export function createConversationService(deps: ConversationDeps) {
       }
     }
 
+    let updated: ChatSession = {
+      ...session,
+      memoriesReferenced: [...new Set([...session.memoriesReferenced, ...memoriesUsed])],
+    };
+    // CD-1: "I'm an AI" disclosure at session start.
     if (!session.disclosed) {
       reply = `${AI_DISCLOSURE}\n\n${reply}`;
-      await deps.sessions.update({ ...session, disclosed: true });
+      updated = { ...updated, disclosed: true };
     }
+    await deps.sessions.update(updated);
 
     await deps.messages.append({ sessionId, userId: session.userId, role: "user", text, createdAt: at, safety: false });
     await deps.messages.append({
@@ -206,6 +315,7 @@ export function createConversationService(deps: ConversationDeps) {
       safety_triggered: false,
       route,
       crisis: null,
+      conversation_ended: false,
       social_action: socialAction,
       memory_proposals: proposed,
     };
@@ -214,7 +324,7 @@ export function createConversationService(deps: ConversationDeps) {
   return { respond };
 }
 
-/** Deletes all of a user's messages, sessions, memories, proposals, social actions, and contact. */
+/** DP-5: deletes all of a user's messages, sessions, memories, proposals, social actions, and contact. */
 export async function deleteAccountData(
   deps: Pick<ConversationDeps, "sessions" | "messages" | "memories" | "proposals" | "socialActions" | "contacts">,
   userId: string,
@@ -227,4 +337,18 @@ export async function deleteAccountData(
     deps.contacts.deleteAllForUser(userId),
   ]);
   await deps.sessions.deleteAllForUser(userId);
+}
+
+/** MP-3 expiry job and DP-4 retention job. Safe to run repeatedly. */
+export async function runRetention(
+  deps: Pick<ConversationDeps, "sessions" | "messages" | "memories">,
+  at: Date,
+  policy: Pick<GuardrailPolicy, "messageRetentionMs"> = DEFAULT_POLICY,
+) {
+  const expiredMemories = await deps.memories.deleteExpired(at);
+  const oldMessages = await deps.messages.deleteOlderThan(
+    new Date(at.getTime() - policy.messageRetentionMs),
+    await deps.sessions.keptIds(),
+  );
+  return { expiredMemories, oldMessages };
 }

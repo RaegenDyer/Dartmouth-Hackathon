@@ -42,7 +42,7 @@ accepted by this normalizer. See [Vapi web calls](https://docs.vapi.ai/quickstar
 and [event shapes](https://docs.vapi.ai/server-url/events).
 
 Partial transcripts replace the provisional preview; finalized segments append
-to committed draft text. The combined limit is 4,000 UTF-16 code units, matching
+to committed draft text. The combined limit is 1,000 UTF-16 code units, matching
 the chat request's string limit. Repeated phrases are legitimate; this buffer
 does not guess whether identical final events are duplicates. The transport must
 avoid replaying events. Invalid or excessive updates leave the previous draft

@@ -34,8 +34,8 @@ test("chat input rejects injected identity, roles, and fabricated history", () =
 
 test("chat text limits apply after trimming and reject empty content", () => {
   assert.equal(sendMessageSchema.parse({ ...message, content: "  Hello  " }).content, "Hello");
-  assert.equal(sendMessageSchema.safeParse({ ...message, content: "a".repeat(4000) }).success, true);
-  assert.equal(sendMessageSchema.safeParse({ ...message, content: "a".repeat(4001) }).success, false);
+  assert.equal(sendMessageSchema.safeParse({ ...message, content: "a".repeat(1000) }).success, true);
+  assert.equal(sendMessageSchema.safeParse({ ...message, content: "a".repeat(1001) }).success, false);
   assert.equal(sendMessageSchema.safeParse({ ...message, content: " \r\n\t " }).success, false);
 });
 

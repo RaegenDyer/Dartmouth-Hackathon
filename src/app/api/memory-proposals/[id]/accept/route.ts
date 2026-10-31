@@ -8,9 +8,10 @@ import { isUuid, readJson } from "@/lib/http/request";
 export const dynamic = "force-dynamic";
 
 // The in-memory store has no record versions yet, so this omits expectedVersion.
+// keep=false applies the default expiry (MP-3); keep=true keeps it until deleted.
 const acceptSchema = z.strictObject({
   content: z.string().trim().min(1).max(500),
-  expiresAt: z.iso.datetime({ offset: true }).nullable(),
+  keep: z.boolean(),
 });
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -22,12 +23,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if ("response" in body) return body.response;
 
   try {
+    const companion = getCompanion();
     const memory = await approveProposal(
-      getCompanion().deps,
+      companion.deps,
       auth.session.actor.userId,
       id,
-      { text: body.data.content, expiresAt: body.data.expiresAt ? new Date(body.data.expiresAt) : null },
+      { text: body.data.content, keep: body.data.keep },
       new Date(),
+      companion.policy,
     );
     return Response.json({ memory: memoryDto(memory) }, { headers: privateHeaders });
   } catch (error) {

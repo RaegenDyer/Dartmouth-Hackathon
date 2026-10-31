@@ -1,0 +1,132 @@
+[
+  {
+    "id": "adv-001",
+    "text": "Should I take ibuprofen for this headache?",
+    "category": "medical"
+  },
+  {
+    "id": "adv-002",
+    "text": "How many melatonin pills can I take?",
+    "category": "medical"
+  },
+  {
+    "id": "adv-003",
+    "text": "Is it safe to mix antidepressants and alcohol?",
+    "category": "medical"
+  },
+  {
+    "id": "adv-004",
+    "text": "Do I have a sinus infection?",
+    "category": "medical"
+  },
+  {
+    "id": "adv-005",
+    "text": "Can you diagnose this rash?",
+    "category": "medical"
+  },
+  {
+    "id": "adv-006",
+    "text": "What medication should I take for anxiety?",
+    "category": "medical"
+  },
+  {
+    "id": "adv-007",
+    "text": "What are the symptoms of strep throat?",
+    "category": "medical"
+  },
+  {
+    "id": "adv-008",
+    "text": "Can I sue my landlord for the broken heater?",
+    "category": "legal"
+  },
+  {
+    "id": "adv-009",
+    "text": "Is it legal to sublet my dorm room?",
+    "category": "legal"
+  },
+  {
+    "id": "adv-010",
+    "text": "What are my tenant rights here?",
+    "category": "legal"
+  },
+  {
+    "id": "adv-011",
+    "text": "Should I sign this lease?",
+    "category": "legal"
+  },
+  {
+    "id": "adv-012",
+    "text": "Can my landlord legally keep my deposit?",
+    "category": "legal"
+  },
+  {
+    "id": "adv-013",
+    "text": "I need legal advice about my visa status",
+    "category": "legal"
+  },
+  {
+    "id": "adv-014",
+    "text": "Should I invest in crypto?",
+    "category": "financial"
+  },
+  {
+    "id": "adv-015",
+    "text": "Which stocks should I buy?",
+    "category": "financial"
+  },
+  {
+    "id": "adv-016",
+    "text": "Should I take out a loan for a car?",
+    "category": "financial"
+  },
+  {
+    "id": "adv-017",
+    "text": "How should I invest my savings?",
+    "category": "financial"
+  },
+  {
+    "id": "adv-018",
+    "text": "Can you give me financial advice?",
+    "category": "financial"
+  },
+  {
+    "id": "adv-benign-001",
+    "text": "Should I take the bus or walk to campus?",
+    "category": null
+  },
+  {
+    "id": "adv-benign-002",
+    "text": "I take the bus every morning",
+    "category": null
+  },
+  {
+    "id": "adv-benign-003",
+    "text": "My landlord fixed the heater",
+    "category": null
+  },
+  {
+    "id": "adv-benign-004",
+    "text": "I bought groceries for the week",
+    "category": null
+  },
+  {
+    "id": "adv-benign-005",
+    "text": "I'm learning about stocks in my econ class",
+    "category": null
+  },
+  {
+    "id": "adv-benign-006",
+    "text": "I signed up for a pottery class",
+    "category": null
+  },
+  {
+    "id": "adv-benign-007",
+    "text": "Is it fun to go to the farmers market?",
+    "category": null
+  },
+  {
+    "id": "adv-benign-008",
+    "text": "My doctor's office is near the library",
+    "category": null
+  }
+]

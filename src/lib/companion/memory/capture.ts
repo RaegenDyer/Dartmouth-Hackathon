@@ -27,7 +27,15 @@ const EXCLUDED_PATTERNS: readonly RegExp[] = [
   /\b(?:diagnos\w*|disorder|adhd|ocd|ptsd|bipolar|autis\w*|therapist|therapy|psychiatrist|medication|meds|antidepressants?|mental (?:health|illness))\b/,
   /\b(?:introvert\w*|extrovert\w*|shy|awkward|unlikable|unlovable|boring person|a failure|a mess|a loser|broken)\b/,
   /\b(?:hate|hates) (?:myself|my life)\b/,
-  /\b(?:system prompt|instructions?|ignore (?:all|any|previous)|you are now|pretend)\b/,
+  /\b(?:system prompt|instructions?|ignore (?:all|any|previous|your)|you are now|pretend|rules?|from now on|always (?:say|reply|respond)|never (?:say|mention|tell))\b/,
+  // MP-1: health conditions and diagnoses.
+  /\b(?:sick|illness|disease|cancer|tumou?r|diabetes|diabetic|asthma|allerg\w*|pregnan\w*|miscarriage|surgery|hospitali[sz]ed|hiv|covid|injur\w*|chronic|migraines?|seizures?|epilep\w*|disabilit\w*|symptoms?|doctor'?s?|prescri\w*|pills?|rehab|addict\w*|sober|relapse\w*)\b/,
+  // MP-1: sexual content.
+  /\b(?:sex|sexual\w*|sexy|hook(?:ed|ing)? ?up|slept with|sleeping with|nudes?|naked|porn\w*|intimate|orgasm\w*|condoms?|kink\w*|onlyfans)\b/,
+  // MP-1: private details of third parties and contact data.
+  /\b(?:arrested|jail|prison|divorc\w*|cheat(?:ed|ing)|affair|undocumented|deported|debt|owes?|salary|pregnant|abortion|abus\w*)\b/,
+  /[^\s@]+@[^\s@]+\.[^\s@]+|\+?\d[\d\s().-]{6,}\d/,
+  /\b\d+ [a-z]+ (?:street|st|avenue|ave|road|rd|lane|ln|drive|dr|court|ct|boulevard|blvd)\b|\blives at\b|\b(?:phone|cell) number\b|\baddress is\b/,
 ];
 
 const PRONOUNS: [RegExp, string][] = [
@@ -63,6 +71,16 @@ function splitSentences(text: string): string[] {
     .split(/(?<=[.!?;])\s+|\n+|,? but /)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
+}
+
+/**
+ * MP-1 / MP-2: the content check applied to every memory, including text the
+ * user edits before saving. Memory text is data, so instruction-like text is
+ * refused rather than stored and later placed in model context.
+ */
+export function isAllowedMemoryText(text: string): boolean {
+  const normalized = normalizeForMatching(text);
+  return !EXCLUDED_PATTERNS.some((pattern) => pattern.test(normalized)) && !checkUserMessage(text).triggered;
 }
 
 export function isRememberableFact(sentence: string): boolean {

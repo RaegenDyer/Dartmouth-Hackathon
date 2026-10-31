@@ -12,6 +12,7 @@ export async function GET() {
         authenticated: true,
         userId: result.session.actor.userId,
         isAnonymous: result.session.isAnonymous,
+        ageConfirmed: result.session.ageConfirmed,
       }
     : { authenticated: false };
   return Response.json(body, { headers: privateHeaders });

@@ -31,7 +31,8 @@ export const SAFETY_PATTERNS: readonly SafetyPattern[] = [
   { category: "suicide", pattern: /\b(?:no|nothing to|no reason to|not worth) (?:reason to )?(?:live|living|go on)\b/ },
   {
     category: "suicide",
-    pattern: /\b(?:better off|be better) (?:without me|if i (?:was|were) gone|if i (?:wasn't|weren't) here|dead)\b/,
+    pattern:
+      /\b(?:better off|be better) (?:without me|if i (?:was|were) gone|if i (?:wasn't|weren't) (?:here|around)|dead)\b/,
   },
   { category: "suicide", pattern: /\b(?:never|not) wake up (?:again)?\b/ },
   { category: "suicide", pattern: /\b(?:hang|hanging|shoot|shooting|drown|drowning|poison|poisoning) myself\b/ },
@@ -41,6 +42,19 @@ export const SAFETY_PATTERNS: readonly SafetyPattern[] = [
   { category: "suicide", pattern: /\bunalive\b|\bkms\b/ },
   { category: "suicide", pattern: /\b(?:can't|cannot|can not) (?:go on|keep going|do this) any ?more\b/ },
   { category: "suicide", pattern: /\bdisappear (?:forever|for good|permanently)\b/ },
+  // Suicide, indirect (CS-3). Each phrase is in evals/data/safety-triggers.json.
+  {
+    category: "suicide",
+    pattern:
+      /\b(?:don't|do not|can't|cannot) see (?:the|any) point (?:in|of) (?:living|life|going on|being alive|anything)\b/,
+  },
+  { category: "suicide", pattern: /\bwhat's the point (?:of|in) (?:anything|living|life|going on|being alive)\b/ },
+  {
+    category: "suicide",
+    pattern: /\bi (?:won't|will not) be (?:around|here) (?:much longer|for (?:much )?longer|for long)\b/,
+  },
+  { category: "suicide", pattern: /\bgiving away (?:all )?(?:of )?my (?:stuff|things|belongings|possessions)\b/ },
+  { category: "suicide", pattern: /\b(?:want|need) (?:it all|everything) to (?:stop|end)\b/ },
   // Self-harm
   { category: "self_harm", pattern: /\bself[- ]?harm(?:ing)?\b/ },
   {
@@ -83,6 +97,38 @@ export function checkUserMessage(text: string): SafetyResult {
   const normalized = normalizeForMatching(text);
   const hit = SAFETY_PATTERNS.find(({ pattern }) => pattern.test(normalized));
   return hit ? { triggered: true, category: hit.category } : { triggered: false, category: null };
+}
+
+export interface SafetyClassifier {
+  checkUserMessage(text: string): SafetyResult | Promise<SafetyResult>;
+  checkReply(text: string): SafetyResult | Promise<SafetyResult>;
+}
+
+export const patternClassifier: SafetyClassifier = {
+  checkUserMessage: (text) => checkUserMessage(text),
+  checkReply: (text) => checkReply(text),
+};
+
+/**
+ * CS-2: fail closed. An error or a check slower than timeoutMs is treated as
+ * triggered, so the crisis screen is shown rather than an unchecked reply.
+ */
+export async function runSafetyCheck(
+  check: () => SafetyResult | Promise<SafetyResult>,
+  timeoutMs: number,
+): Promise<SafetyResult & { failed: boolean }> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("safety check timed out")), timeoutMs);
+  });
+  try {
+    const result = await Promise.race([Promise.resolve().then(check), timeout]);
+    return { ...result, failed: false };
+  } catch {
+    return { triggered: true, category: null, failed: true };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function checkReply(text: string): SafetyResult {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const MAX_DICTATION_CHARACTERS = 4000;
+export const MAX_DICTATION_CHARACTERS = 1000;
 
 const textSchema = z.string().max(MAX_DICTATION_CHARACTERS).refine(
   (text) => !text.includes("\u0000") && !/[\uD800-\uDFFF]/u.test(text),
@@ -65,7 +65,7 @@ export interface DictationBuffer {
 function validateText(text: string): void {
   if (!textSchema.safeParse(text).success) {
     // Never include transcript contents in thrown errors.
-    throw new TypeError("Dictation text must be valid Unicode and at most 4000 characters.");
+    throw new TypeError("Dictation text must be valid Unicode and at most 1000 characters.");
   }
 }
 
@@ -74,7 +74,7 @@ function appendSegment(base: string, segment: string): string {
     ? `${base}${/\s$/u.test(base) ? "" : " "}${segment}`
     : base || segment;
   if (combined.length > MAX_DICTATION_CHARACTERS) {
-    throw new RangeError("Dictation exceeds the 4000 character message limit.");
+    throw new RangeError("Dictation exceeds the 1000 character message limit.");
   }
   return combined;
 }

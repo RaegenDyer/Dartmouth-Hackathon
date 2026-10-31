@@ -198,5 +198,55 @@
     "id": "cap-040",
     "text": "I'm heartbroken about my breakup.",
     "shouldCapture": false
+  },
+  {
+    "id": "cap-041",
+    "text": "My mom has cancer.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-042",
+    "text": "My roommate got arrested last week.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-043",
+    "text": "My sister is pregnant.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-044",
+    "text": "My boss's phone number is 555 123 4567.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-045",
+    "text": "My neighbor lives at 12 Elm Street.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-046",
+    "text": "I hooked up with someone from my program.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-047",
+    "text": "My roommate is cheating on her boyfriend.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-048",
+    "text": "My friend is in rehab.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-049",
+    "text": "My roommate is from Texas.",
+    "shouldCapture": true
+  },
+  {
+    "id": "cap-050",
+    "text": "I just started a pottery class.",
+    "shouldCapture": true
   }
 ]

@@ -11,6 +11,14 @@ export function memoryErrorResponse(error: unknown): Response {
   return apiError(500, "INTERNAL_ERROR", "Something went wrong. Please try again.");
 }
 
+/** OP-1: chat is switched off; the UI shows the static crisis notice. */
+export function chatDisabledResponse(): Response {
+  return Response.json(
+    { error: { code: "PROVIDER_UNAVAILABLE", message: "Chat is turned off right now." }, chatDisabled: true },
+    { status: 503, headers: { "Cache-Control": "no-store" } },
+  );
+}
+
 export const memoryDto = (memory: Memory) => ({
   id: memory.id,
   text: memory.text,

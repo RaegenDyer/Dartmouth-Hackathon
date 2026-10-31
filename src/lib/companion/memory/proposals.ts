@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { DEFAULT_POLICY, type GuardrailPolicy } from "../limits";
+import { isAllowedMemoryText } from "./capture";
 import { MemoryError, validateMemoryText, type Memory, type MemoryRepository } from "./store";
 
 // A remembered fact starts as a proposal. Nothing enters model context until the
@@ -55,22 +57,28 @@ export class InMemoryMemoryProposalRepository implements MemoryProposalRepositor
   }
 }
 
-/** Saves the user's reviewed (possibly edited) text as a memory, then clears the proposal. */
+export const DISALLOWED_MEMORY_MESSAGE =
+  "That can't be saved. Memories hold everyday facts only: no health, intimate, or contact details, private details about other people, or instructions.";
+
+/**
+ * Saves the user's reviewed (possibly edited) text as a memory, then clears the
+ * proposal. MP-3: the memory expires after the policy period unless the user
+ * chooses to keep it. MP-1/MP-2: edited text gets the same content check.
+ */
 export async function approveProposal(
   deps: { proposals: MemoryProposalRepository; memories: MemoryRepository },
   userId: string,
   proposalId: string,
-  input: { text: string; expiresAt: Date | null },
+  input: { text: string; keep: boolean },
   now: Date,
+  policy: Pick<GuardrailPolicy, "memoryExpiryMs"> = DEFAULT_POLICY,
 ): Promise<Memory> {
   const proposal = await deps.proposals.get(userId, proposalId);
   if (!proposal) throw new MemoryError("NOT_FOUND", "Suggestion not found.");
   const text = validateMemoryText(input.text);
-  if (input.expiresAt && input.expiresAt.getTime() <= now.getTime()) {
-    throw new MemoryError("INVALID_EXPIRY", "Expiry must be in the future, or cleared.");
-  }
-  let memory = await deps.memories.create(userId, text, now);
-  if (input.expiresAt) memory = await deps.memories.setExpiry(userId, memory.id, input.expiresAt, now);
+  if (!isAllowedMemoryText(text)) throw new MemoryError("INVALID_TEXT", DISALLOWED_MEMORY_MESSAGE);
+  const expiresAt = input.keep ? null : new Date(now.getTime() + policy.memoryExpiryMs);
+  const memory = await deps.memories.create(userId, text, now, expiresAt);
   await deps.proposals.remove(userId, proposalId);
   return memory;
 }

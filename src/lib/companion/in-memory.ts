@@ -1,20 +1,29 @@
 import { randomBytes } from "node:crypto";
 import { InMemoryMessageRepository, InMemorySessionRepository } from "./conversation/repositories";
 import { createConversationService, type ConversationDeps } from "./conversation/respond";
+import type { GuardrailPolicy } from "./limits";
 import type { LlmAdapter } from "./llm/adapter";
 import { MockLlmAdapter } from "./llm/mock";
+import type { LogEvent, Logger } from "./log";
 import { InMemoryMemoryProposalRepository } from "./memory/proposals";
 import { InMemoryMemoryRepository } from "./memory/store";
+import type { SafetyClassifier } from "./safety/classifier";
 import { InMemoryEmergencyContactRepository } from "./safety/contact";
-import type { SafetyLogger } from "./safety/crisis";
 import { InMemorySocialActionRepository } from "./scheduler/weekly";
 
-/** Wires in-memory repositories for tests, evals, and the mocked local mode. */
+/** Wires in-memory repositories for tests, evals, and the local test server. */
 export function createInMemoryCompanion(
-  options: { llm?: LlmAdapter; now?: () => Date; logSafety?: SafetyLogger; contactKey?: Buffer } = {},
+  options: {
+    llm?: LlmAdapter;
+    now?: () => Date;
+    log?: Logger;
+    contactKey?: Buffer;
+    safety?: SafetyClassifier;
+    policy?: GuardrailPolicy;
+  } = {},
 ) {
   const now = options.now ?? (() => new Date());
-  const safetyEvents: Parameters<SafetyLogger>[0][] = [];
+  const logEvents: LogEvent[] = [];
   const deps = {
     sessions: new InMemorySessionRepository(),
     messages: new InMemoryMessageRepository(),
@@ -23,8 +32,10 @@ export function createInMemoryCompanion(
     socialActions: new InMemorySocialActionRepository(),
     contacts: new InMemoryEmergencyContactRepository(options.contactKey ?? randomBytes(32)),
     llm: options.llm ?? new MockLlmAdapter(),
-    logSafety: options.logSafety ?? ((event) => void safetyEvents.push(event)),
+    log: options.log ?? ((event: LogEvent) => void logEvents.push(event)),
+    safety: options.safety,
+    policy: options.policy,
     now,
   } satisfies ConversationDeps;
-  return { deps, safetyEvents, ...createConversationService(deps) };
+  return { deps, logEvents, ...createConversationService(deps) };
 }
