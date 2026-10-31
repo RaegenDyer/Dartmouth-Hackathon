@@ -29,7 +29,7 @@ choose and code its own style. No direction has been selected yet.
 | Supabase | Project access, a read-only SQL query, and authentication-configuration access verified. Browser/server client factories exist. | App login/session refresh, user-scoped repositories, and an applied schema |
 | Data model | Draft migration for profiles, conversations, messages, memory proposals, memories, and social actions; 37 isolated PostgreSQL behavior checks pass, including expiry and input-bound regressions. | Revise tables to match chosen features; verify real Supabase Auth/Data API behavior and concurrency before application |
 | Vercel | Account access verified; `vercel.json` configures Next.js, locked installation with build tools, and checks before building. [Deployment guide](docs/deployment.md) prepared. | Import the GitHub repository and create the project; initial foundation needs no app variables; no deployment has been performed |
-| GitHub | Repository access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
+| GitHub | Public repository on `main`; access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, validated runtime/build configuration, and provider factories; contract and configuration regression checks. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
 
@@ -68,6 +68,13 @@ and simplified Supabase identity/role stubs. They do not test hosted JWTs, the
 Supabase Data API, or simultaneous network requests. No migration was applied to
 the shared Supabase project during preparation.
 
+Desktop relocation was checked on October 30 after repairing the missing local
+branch reference, restoring the health route, and reinstalling incomplete local
+dependencies from the lockfile. All 43 tracked files matched Git's saved content,
+all four generated PNGs passed integrity checks, and no tracked paths referenced
+the old OneDrive location. The full checks and production build pass from the
+new Desktop folder. These local repairs did not require source-code changes.
+
 ### Next technical milestone
 
 Prove one small path through the stack: **open the app -> establish a user session
@@ -84,10 +91,11 @@ verified. Distinguish provider access, code scaffolding, and tested app behavior
 ### Hosting preparation
 
 Follow [the Vercel setup guide](docs/deployment.md) to import `main` from GitHub.
-The October 30 account check found a Hobby account with no Vercel projects; the
-GitHub repository is private. Review the guide's collaboration requirements
-before relying on deployments authored by every contributor. No paid plan or
-repository visibility change has been made.
+The October 30 account check found a Hobby account with no Vercel projects. The
+owner has since made the GitHub repository public, and unauthenticated access
+has been verified. Vercel supports collaboration for public repositories on
+Hobby; the earlier private-repository restriction no longer applies to this
+repository. See the guide's linked collaboration requirements.
 
 The first deployment can serve the preparation page and `/api/health` with no
 application environment variables or Supabase migration. Add integration settings

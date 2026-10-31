@@ -3,8 +3,9 @@
 Status, October 30, 2026: prepared; no deployment verified yet. The foundation is
 on `main`. The first deployment serves the preparation page and `/api/health`;
 authentication, chat, and saved-data features are still implementation work.
-The account check found the `raegendyer` Hobby team, no Vercel projects, and a
-private personal GitHub repository. Import and GitHub App authorization remain.
+The account check found the `raegendyer` Hobby team and no Vercel projects. The
+owner has made the GitHub repository public, and unauthenticated access has been
+verified. Import and GitHub App authorization remain.
 
 ## First deployment: steps in your accounts
 
@@ -41,12 +42,13 @@ GitHub Actions remains an independent check, so confirm it passes before merging
 | Output directory | Framework default; leave the override off |
 | Domain | Start with the assigned `.vercel.app` domain |
 
-For a private repository with multiple contributors, check the chosen Vercel
-plan before relying on every contributor's push creating a deployment. Hobby
-does not support private-repository collaboration; Vercel checks commit-author
-access and requires the Hobby team's owner as the author. Review
-[Vercel collaboration requirements](https://vercel.com/docs/deployments/troubleshoot-project-collaboration)
-if an author is blocked; selecting a paid team is a separate account decision.
+This repository is now public. Vercel supports free collaboration for public
+repositories, so its private-repository Hobby restriction no longer applies.
+Public visibility does not grant Vercel GitHub App access by itself; complete
+the import authorization above. If a contributor's deployment is blocked,
+review [Vercel collaboration requirements](https://vercel.com/docs/deployments/troubleshoot-project-collaboration)
+and Git provider connections. If the repository becomes private again, revisit
+the plan requirements before relying on collaborator deployments.
 
 ## Verify the hosted foundation
 
