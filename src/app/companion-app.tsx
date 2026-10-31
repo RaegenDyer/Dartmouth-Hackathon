@@ -68,7 +68,7 @@ async function readError(response: Response): Promise<ApiErrorBody> {
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
 const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" });
 
-type IconName = "chat" | "memories" | "home" | "profile" | "settings";
+type IconName = "chat" | "memories" | "home" | "settings";
 
 /** Decorative raster icon (generated artwork in public/icons); text labels stay beside it. */
 function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
