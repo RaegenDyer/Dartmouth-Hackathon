@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type Keyboard
 import { OPENING_MESSAGE } from "@/lib/companion/boundary/rules";
 import { greeting } from "@/lib/ui/greeting";
 import { splitStep } from "@/lib/ui/step";
+import Image from "next/image";
 import { MessageText } from "./message-text";
 
 /** MB-6. The server enforces the same limit. */
@@ -66,6 +67,13 @@ async function readError(response: Response): Promise<ApiErrorBody> {
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
 const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" });
+
+type IconName = "chat" | "memories" | "home" | "profile" | "settings";
+
+/** Decorative raster icon (generated artwork in public/icons); text labels stay beside it. */
+function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
+  return <Image className="icon" src={`/icons/${name}.png`} alt="" aria-hidden="true" width={size} height={size} />;
+}
 
 function Wordmark() {
   return (
@@ -465,7 +473,10 @@ export function CompanionApp() {
     if (laterIds.has(proposal.id) || !proposals.some((item) => item.id === proposal.id)) return null;
     return (
       <div className="card remember" role="group" aria-label="Memory suggestion">
-        <span className="label">want me to remember this?</span>
+        <span className="label">
+          <Icon name="memories" size={18} />
+          want me to remember this?
+        </span>
         <p>{proposal.text}</p>
         <div className="actions">
           <button
@@ -490,7 +501,8 @@ export function CompanionApp() {
 
   const conversationList = (
     <section className="history" aria-labelledby="history-title">
-      <h2 id="history-title" className="label">
+      <h2 id="history-title" className="label heading-icon">
+        <Icon name="home" size={20} />
         Your conversations
       </h2>
       <p className="fine-print" id="history-note">
@@ -565,15 +577,21 @@ export function CompanionApp() {
         </button>
         <nav className="rail-nav" aria-label="Sections">
           <button type="button" className="rail-link on" onClick={() => setTab("chat")}>
+            <Icon name="chat" />
             chat
           </button>
           <button type="button" className="rail-link" onClick={showMemories}>
+            <Icon name="memories" />
             memories
             {pendingCount > 0 && <span className="count">{pendingCount} new</span>}
           </button>
         </nav>
         {conversationList}
         <div className="rail-end">
+          <span className="label heading-icon">
+            <Icon name="settings" size={20} />
+            Your data
+          </span>
           {confirmDelete ? (
             <div className="confirm" role="group" aria-label="Confirm data deletion">
               <p>Delete all your conversations, memories, and suggestions? This can&apos;t be undone.</p>
@@ -709,7 +727,10 @@ export function CompanionApp() {
 
       <aside className="space" aria-labelledby="space-title">
         <span className="label">your space</span>
-        <h2 id="space-title">what Candid remembers</h2>
+        <h2 id="space-title" className="heading-icon">
+          <Icon name="memories" size={26} />
+          what Candid remembers
+        </h2>
         <p className="fine-print">Only what you choose to save. Delete anything, anytime.</p>
 
         <h3>waiting for you</h3>
@@ -797,12 +818,15 @@ export function CompanionApp() {
 
       <nav className="tabbar" aria-label="Sections">
         <button type="button" aria-current={tab === "chat" ? "page" : undefined} onClick={() => setTab("chat")}>
+          <Icon name="chat" size={28} />
           chat
         </button>
         <button type="button" aria-current={tab === "memories" ? "page" : undefined} onClick={() => setTab("memories")}>
-          memories{pendingCount > 0 && <span className="count">{pendingCount}</span>}
+          <Icon name="memories" size={28} />
+          <span>memories{pendingCount > 0 && <span className="count">{pendingCount}</span>}</span>
         </button>
         <button type="button" aria-current={tab === "history" ? "page" : undefined} onClick={() => setTab("history")}>
+          <Icon name="home" size={28} />
           history
         </button>
       </nav>
