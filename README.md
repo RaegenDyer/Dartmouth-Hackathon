@@ -26,7 +26,7 @@ choose and code its own style. No direction has been selected yet.
 | --- | --- | --- |
 | Application framework | Next.js/React/TypeScript starter runs without credentials. `/` is a preparation page; `GET /api/health` is the only implemented API route. | Product interface and application endpoints |
 | Anthropic | Credentials verified with a successful live text request. Server-only SDK client factory exists. | Connect the app to a model request/response flow; choose model and usage limits |
-| Supabase | Project access, a read-only SQL query, and authentication-configuration access verified. Browser/server client factories exist. | App login/session refresh, user-scoped repositories, and an applied schema |
+| Supabase | Project access, a read-only SQL query, and authentication-configuration access verified. Browser/server client factories exist. Auth plumbing: session-refresh Proxy (`src/proxy.ts`), `getClaims()`-verified actor helper (`requireSession` in `src/lib/auth/server.ts`), same-origin mutation guard, `GET /api/auth/session`, and `POST /api/auth/sign-out`; unit-tested with a mocked client and smoke-tested without credentials. | Choose the sign-in method (anonymous vs. permanent accounts) and build sign-in/callback; verify against the hosted project; login UI waits on the design checkpoint; user-scoped repositories and an applied schema |
 | Data model | Draft migration for profiles, conversations, messages, memory proposals, memories, and social actions; 37 isolated PostgreSQL behavior checks pass, including expiry and input-bound regressions. | Revise tables to match chosen features; verify real Supabase Auth/Data API behavior and concurrency before application |
 | Vercel | Account access verified; `vercel.json` configures Next.js, locked installation with build tools, and checks before building. [Deployment guide](docs/deployment.md) prepared. | Import the GitHub repository and create the project; initial foundation needs no app variables; no deployment has been performed |
 | GitHub | Public repository on `main`; access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
@@ -35,8 +35,8 @@ choose and code its own style. No direction has been selected yet.
 | Optional voice input | [Vapi architecture](docs/voice.md), session/provider interfaces, user-transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default. | Assistant/account setup, verified-user session bootstrap, actual SDK transport, no-spoken-reply/cost validation, and browser/device checks; no microphone or calls run yet |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
 
-The model client factory does not implement chat. The Supabase factories do not
-implement authentication. A migration file does not mean the hosted database has
+The model client factory does not implement chat. Auth verifies and signs out
+existing sessions, but no sign-in method exists yet. A migration file does not mean the hosted database has
 that schema. Only the preparation page and liveness route currently run in the
 application; normal startup makes no Anthropic or Supabase calls.
 
@@ -170,6 +170,8 @@ src/lib/contracts/           Shared request and stream schemas
 src/lib/domain/              Service boundary interfaces
 src/lib/anthropic/           Server-only model client factory
 src/lib/supabase/            Browser and server client factories
+src/lib/auth/                Verified-session helpers and origin guard
+src/proxy.ts                 Supabase session-cookie refresh (not authorization)
 src/lib/env/                 Explicit runtime configuration boundaries
 src/lib/companion/           Conversation, safety, memory, disclosure, scheduler, LLM adapter
 tests/unit/                  Vitest unit tests

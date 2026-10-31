@@ -1,6 +1,7 @@
 # API contracts
 
-These are proposed contracts for implementation. Only `GET /api/health` exists.
+These are proposed contracts for implementation. Only `GET /api/health`,
+`GET /api/auth/session`, and `POST /api/auth/sign-out` exist.
 All other routes below are intentionally absent until their authorization,
 business logic, persistence, and tests are ready. Shared request/event schemas
 are in `src/lib/contracts/index.ts`.
@@ -30,6 +31,8 @@ are in `src/lib/contracts/index.ts`.
 | Method and path | Input / output | Status |
 | --- | --- | --- |
 | `GET /api/health` | `{status:"ok",service:"dartmouth-hackathon",stage:"foundation"}` | Implemented; public liveness only |
+| `GET /api/auth/session` | `{authenticated:false}` or `{authenticated:true,userId,isAnonymous}` from verified claims; 503 if Supabase is not configured | Implemented |
+| `POST /api/auth/sign-out` | Same-origin only (403 otherwise); ends this browser's session; 204 | Implemented |
 | `GET /api/profile` | Current actor's profile and version | Planned |
 | `PATCH /api/profile` | `updateProfileSchema`; saved profile | Planned |
 | `POST /api/conversations` | `createConversationSchema`; conversation ID and version | Planned |
@@ -46,7 +49,7 @@ are in `src/lib/contracts/index.ts`.
 
 Route IDs are UUIDs and are validated separately from the body. List responses
 will need cursor/limit schemas (default 20, maximum 100) before implementation.
-Account deletion, history deletion, authentication UI/callbacks, and optional
+Account deletion, history deletion, sign-in (method not yet chosen), auth UI/callbacks, and optional
 dictation endpoints are also implementation tasks; no placeholder route claims
 these work.
 
