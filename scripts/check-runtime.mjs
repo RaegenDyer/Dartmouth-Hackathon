@@ -4,6 +4,7 @@ import { afterEach, beforeEach, test } from "node:test";
 import ts from "typescript";
 import { getPublicEnvironment } from "../src/lib/env/public.ts";
 import { getServerEnvironment } from "../src/lib/env/server.ts";
+import { getVoiceInputConfiguration } from "../src/lib/voice/server.ts";
 
 const settingNames = [
   "NEXT_PUBLIC_SUPABASE_URL",
@@ -12,6 +13,9 @@ const settingNames = [
   "ANTHROPIC_MODEL",
   "ANTHROPIC_BASE_URL",
   "ANTHROPIC_LOG",
+  "VOICE_INPUT_ENABLED",
+  "VAPI_PRIVATE_KEY",
+  "VAPI_ASSISTANT_ID",
 ];
 let originalSettings;
 
@@ -170,4 +174,38 @@ test("Anthropic factory keeps endpoint, logging, retries, and timeout bounded", 
   assert.equal(client.maxRetries, 0);
   assert.equal(client.timeout, 45_000);
   assert.equal(model, "test-only-model");
+});
+
+test("optional voice configuration is disabled without Vapi credentials", () => {
+  assert.deepEqual(getVoiceInputConfiguration(), {
+    enabled: false, provider: "vapi", mode: "dictation",
+  });
+  process.env.VOICE_INPUT_ENABLED = "false";
+  process.env.VAPI_PRIVATE_KEY = "unused-invalid key";
+  assert.equal(getVoiceInputConfiguration().enabled, false);
+});
+
+test("enabled voice configuration requires explicit server-only Vapi settings", () => {
+  process.env.VOICE_INPUT_ENABLED = "true";
+  assert.throws(getVoiceInputConfiguration, /VAPI_PRIVATE_KEY.*VAPI_ASSISTANT_ID/);
+  process.env.VAPI_PRIVATE_KEY = " test-only-private-key ";
+  process.env.VAPI_ASSISTANT_ID = "11111111-1111-4111-8111-111111111111";
+  assert.deepEqual(getVoiceInputConfiguration(), {
+    enabled: true, provider: "vapi", mode: "dictation",
+    privateKey: "test-only-private-key",
+    assistantId: "11111111-1111-4111-8111-111111111111",
+  });
+});
+
+test("voice configuration rejects invalid flags and reports no secret values", () => {
+  process.env.VOICE_INPUT_ENABLED = "yes";
+  assert.throws(getVoiceInputConfiguration, /voice settings: VOICE_INPUT_ENABLED$/);
+  process.env.VOICE_INPUT_ENABLED = "true";
+  process.env.VAPI_PRIVATE_KEY = "DO_NOT_INCLUDE THIS_VALUE";
+  process.env.VAPI_ASSISTANT_ID = "not-a-uuid";
+  assert.throws(getVoiceInputConfiguration, (error) => {
+    assert.equal(error.message,
+      "Missing or invalid voice settings: VAPI_PRIVATE_KEY, VAPI_ASSISTANT_ID");
+    return true;
+  });
 });

@@ -33,6 +33,11 @@
   contact with other people, or hidden memory persistence.
 - For account and console setup, prefer focused step-by-step guidance. Use
   existing authorized access when the user asks you to carry out the action.
+- Vapi is selected for optional voice input. Read docs/voice.md before voice
+  work. Keep it disabled by default; the current code is preparation, not a live
+  Vapi transport. Preserve editable dictation and explicit Send. Spoken replies
+  and outbound calls remain outside scope; verify Vapi output/cost behavior
+  before activating calls. Private Vapi credentials stay server-only.
 - For app visual design, use the image-generation workflow for app mockups as
   well as original raster icons and illustrative assets. The user prefers
   generated raster assets over SVG/vector icon packs, icon fonts, emoji, or

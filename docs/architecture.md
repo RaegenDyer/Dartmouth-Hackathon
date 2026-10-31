@@ -17,6 +17,12 @@ Optional dictation later turns speech into editable text before the user sends
 it. Spoken responses, phone calls, avatars, live event scraping, and autonomous
 messages to other people are outside the initial scope.
 
+Vapi is selected for optional dictation. The disabled provider/session ports,
+transcript adapter, draft buffer, and server configuration are prepared; actual
+capture and session transport are not implemented. The [voice architecture](voice.md)
+keeps user-reviewed transcription separate from the app's Anthropic conversation
+flow. Vapi's own pipeline/output/cost behavior must be verified before activation.
+
 ## System shape
 
 Use one Next.js application, deployed on Vercel. Keep the interface, API, and

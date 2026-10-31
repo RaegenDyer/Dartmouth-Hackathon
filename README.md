@@ -4,7 +4,7 @@
 
 **Status as of October 30, 2026: the technical foundation is ready for feature
 implementation. The app is not yet a working end-to-end product or a deployed
-website.** The foundation is on `prep/architecture-foundation`.
+website.** The foundation has been merged into `main` through PR #1.
 
 **Current user direction:** prioritize reusable capabilities and preparation for
 multiple contributors. Product features are exploratory and mutable. Treat the
@@ -28,10 +28,11 @@ choose and code its own style. No direction has been selected yet.
 | Anthropic | Credentials verified with a successful live text request. Server-only SDK client factory exists. | Connect the app to a model request/response flow; choose model and usage limits |
 | Supabase | Project access, a read-only SQL query, and authentication-configuration access verified. Browser/server client factories exist. | App login/session refresh, user-scoped repositories, and an applied schema |
 | Data model | Draft migration for profiles, conversations, messages, memory proposals, memories, and social actions; 37 isolated PostgreSQL behavior checks pass, including expiry and input-bound regressions. | Revise tables to match chosen features; verify real Supabase Auth/Data API behavior and concurrency before application |
-| Vercel | Hosting choice settled and API token verified. | Create the hosting project, set application environment variables, and deploy; no deployment has been performed |
-| GitHub | Repository access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
+| Vercel | Account access verified; `vercel.json` configures Next.js, locked installation with build tools, and checks before building. [Deployment guide](docs/deployment.md) prepared. | Import the GitHub repository and create the project; initial foundation needs no app variables; no deployment has been performed |
+| GitHub | Public repository on `main`; access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
 | Companion core (milestone 1, step 1) | Server-side modules in `src/lib/companion`: `respond()` conversation service, safety pre/post checks and crisis view, memory store and fact-only capture, code-enforced memory disclosure, weekly social-action scheduler, boundary rules (AI status, only-connection, dependence, prompt reveal), rate limiter, encrypted emergency contact, account-data deletion. Mocked and Anthropic LLM adapters. In-memory repositories. Vitest unit tests and a deterministic eval suite (`evals/`). See the [milestone report](docs/milestone-1-report.md). | Supabase-backed repositories, auth, route handlers, chat UI, and memory panel. The `eval-llm` run has not been executed yet. |
 | Contracts and boundaries | Zod request/event schemas, domain interfaces, validated runtime/build configuration, and provider factories; contract and configuration regression checks. | Actual authenticated route handlers and service logic; these definitions are not completed integrations |
+| Optional voice input | [Vapi architecture](docs/voice.md), session/provider interfaces, user-transcript normalization, bounded editable draft buffer, and isolated server configuration. Disabled by default. | Assistant/account setup, verified-user session bootstrap, actual SDK transport, no-spoken-reply/cost validation, and browser/device checks; no microphone or calls run yet |
 | Visual exploration | [100 design references and three image-generated desktop/mobile concepts](docs/design/README.md), plus a transparent raster icon-family study. | Discuss image-generated designs with the collaborator doing frontend work and record their decision before implementation; checkpoint pending; mockup features remain mutable |
 
 The model client factory does not implement chat. The Supabase factories do not
@@ -50,8 +51,9 @@ and the pending collaborator style decision remain as documented above.
 Current local verification:
 
 - Clean dependency installation with `npm ci`.
-- `npm run check`: lint, TypeScript, 9 contract checks, 10 runtime/configuration
-  checks, and 37 isolated database checks. These require no service credentials.
+- `npm run check`: lint, TypeScript, 9 contract checks, 13 runtime/configuration
+  checks, 9 voice-input checks, and 37 isolated database checks. These require no
+  service credentials or paid provider calls.
 - `npm run build`: production build.
 - `npm audit`: zero reported vulnerabilities after updating the lint toolchain's
   transitive `minimatch` dependency through a pinned override.
@@ -75,6 +77,13 @@ and simplified Supabase identity/role stubs. They do not test hosted JWTs, the
 Supabase Data API, or simultaneous network requests. No migration was applied to
 the shared Supabase project during preparation.
 
+Desktop relocation was checked on October 30 after repairing the missing local
+branch reference, restoring the health route, and reinstalling incomplete local
+dependencies from the lockfile. All 43 tracked files matched Git's saved content,
+all four generated PNGs passed integrity checks, and no tracked paths referenced
+the old OneDrive location. The full checks and production build pass from the
+new Desktop folder. These local repairs did not require source-code changes.
+
 ### Next technical milestone
 
 Prove one small path through the stack: **open the app -> establish a user session
@@ -88,6 +97,20 @@ relevant architecture documents. Update this README in the same change whenever
 a capability becomes implemented, a migration is applied, or a deployment is
 verified. Distinguish provider access, code scaffolding, and tested app behavior.
 
+### Hosting preparation
+
+Follow [the Vercel setup guide](docs/deployment.md) to import `main` from GitHub.
+The October 30 account check found a Hobby account with no Vercel projects. The
+owner has since made the GitHub repository public, and unauthenticated access
+has been verified. Vercel supports collaboration for public repositories on
+Hobby; the earlier private-repository restriction no longer applies to this
+repository. See the guide's linked collaboration requirements.
+
+The first deployment can serve the preparation page and `/api/health` with no
+application environment variables or Supabase migration. Add integration settings
+when those features are implemented. Record the actual production URL and tested
+commit here after the first hosted deployment is verified.
+
 ## Exploratory product direction
 
 The current idea is a nonclinical companion for adults settling into a new city
@@ -95,6 +118,8 @@ or program, helping them build human connections. **Designed to be uninstalled**
 is a working principle. The name, visual direction, and detailed features are
 not finalized. Text input and text output are the working scope; optional
 speech-to-text input can be added later. Voice responses are not currently planned.
+Vapi is selected for that optional input path; its disabled architecture and
+transcript handling are prepared without a live provider connection.
 
 ## Start locally
 
@@ -150,9 +175,11 @@ src/lib/companion/           Conversation, safety, memory, disclosure, scheduler
 tests/unit/                  Vitest unit tests
 e2e/                         Playwright end-to-end tests
 evals/                       Eval datasets (data/), runner, and committed reports
+src/lib/voice/               Optional dictation ports, transcript buffer, server config
 supabase/migrations/         Reviewable database changes; not applied automatically
 docs/                        Architecture, contracts, decisions, implementation order
 .github/workflows/           Checks; no production deployment workflow yet
+vercel.json                  Vercel framework, installation, and checked build
 ```
 
 ## Credential boundaries
