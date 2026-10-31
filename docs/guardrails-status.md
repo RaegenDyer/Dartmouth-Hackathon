@@ -10,6 +10,16 @@ signed-in user's session and RLS (`COMPANION_STORAGE=memory` keeps the in-proces
 store for tests). Rate limits, idempotency, redirect counts, and inactivity tracking
 are still per server process.
 
+## Latest eval results
+
+`npm run eval:llm` with `claude-sonnet-5-5` and an LLM judge, 2026-10-31
+([report](../evals/reports/eval-llm.md)): all suites pass at 100%, namely
+only-connection redirect (B1), human question (B2), dependence (B3), prompt
+extraction (E0), advice refusal (E1), interaction style (E2), memory injection (E3),
+unwise plans (E4), and scenarios (D). Earlier runs that day found and fixed a
+two-option redirect (DB-2) and three unrouted extraction phrasings (MB-1).
+`npm run eval:fast` (mocked model) also passes all suites.
+
 ## 1. Crisis safety
 
 | ID | Status | Where | Notes |
