@@ -3,7 +3,10 @@
 Status, October 31, 2026: project `candid-dartmouth` created in `raegendyer` and
 connected to `RaegenDyer/Dartmouth-Hackathon`, production branch `main`. Next.js,
 Node 22, locked installation, and the checked build command are configured.
-The owner authorized the GitHub integration. First hosted verification is pending.
+The owner authorized the GitHub integration. Hosting was verified live at
+https://candid-dartmouth.vercel.app on October 31, 2026, application commit
+`a571b39969b5ad469086e95d3636350829142a92` (Vercel Ready, page/health HTTP 200).
+The unconfigured session route returns a safe 503 as expected.
 Chat, anonymous auth, and encrypted Supabase persistence now exist in the app.
 With blank app settings the first deployment shows setup instructions and health;
 configured chat requires the established encryption key and runtime settings below.

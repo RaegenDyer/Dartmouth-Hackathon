@@ -6,8 +6,9 @@ keeps its original name, Dartmouth-Hackathon.
 ## Start here: agent handoff
 
 **Status as of October 31, 2026: the merged app includes chat, anonymous sessions,
-approval-first memories, and Supabase persistence. Hosting setup has begun; no
-Vercel deployment is verified yet.** The final merge review found and fixed a
+approval-first memories, and Supabase persistence. Vercel hosting is verified at
+https://candid-dartmouth.vercel.app; configured chat still needs runtime settings.**
+The final merge review found and fixed a
 Unicode ciphertext-capacity regression. The new additive database migration is
 pending application before the configured chat is released.
 
@@ -30,7 +31,7 @@ style discussion, image-generated mockups informed by the
 | Anthropic | Server-only client and conversation adapter are connected to the chat service. Mock mode remains available without paid calls. | Set the intended model for deployment and shared usage limits |
 | Supabase | Anonymous sign-in enabled and verified live (`npm run verify:auth`, 16 checks). Session-refresh Proxy, `getClaims()`-verified actor with age gate and inactivity timeout, same-origin mutation guard, hardened cookies, and session/anonymous/sign-out routes. | Decide on permanent accounts so people can return across devices |
 | Data model | Collaborator recorded migrations `202610300001` and `202610310001` applied on 2026-10-31 with RLS and live two-user isolation. App text is encrypted before storage; 52 isolated PostgreSQL checks now pass. | Apply additive migration `202610310002` for Unicode ciphertext capacity; durable turn claims and shared rate limits |
-| Vercel | Project `candid-dartmouth` created in `raegendyer`, with Next.js, Node 22, locked installation, and checked builds. GitHub integration and production branch `main` verified. [Deployment guide](docs/deployment.md) updated. | Supply the existing encryption key for configured chat; first hosted deployment pending verification |
+| Vercel | [Live hosting](https://candid-dartmouth.vercel.app) verified on October 31. Project `candid-dartmouth` uses Next.js, Node 22, checked builds, and GitHub production branch `main`. Page and health return 200. | Supply the existing encryption key, public Supabase settings, and pending migration before configured chat |
 | GitHub | Public repository on `main`; access and secret uploads verified. Contributor instructions and a credential-free CI workflow exist. | Feature branches and later deployment automation |
 | Companion core (milestone 1) | `src/lib/companion`: conversation service with the [guardrails](docs/guardrails.md) enforced in code, memory suggestions that the user approves, Supabase-backed storage (`supabase-store.ts`), and authenticated routes for conversations, chat, memories, and account deletion. Unit, route, schema, E2E, and mocked/LLM-judged evals pass. | SSE streaming and version checks; see [guardrails status](docs/guardrails-status.md) for partial items |
 | Contracts and boundaries | Zod schemas, validated configuration, provider factories, and authenticated conversation/chat/memory routes with regression coverage. | Streaming, durable idempotency, and remaining proposed profile/social-action routes |
@@ -51,8 +52,8 @@ mean the hosted database has that schema. Anthropic is called only when
 The October 30 foundation review adds stricter stored-text validation, wall-clock
 memory-approval expiry checks, bounded database fields/interests, and public
 configuration validation before bundling. The Anthropic client fixes the official
-endpoint and disables SDK request logging. Existing generated visual proposals
-and the pending collaborator style decision remain as documented above.
+endpoint and disables SDK request logging. The chat-scoped style decision is
+recorded above; other screens still need their collaborator design discussion.
 
 Current local verification:
 
@@ -101,11 +102,11 @@ new Desktop folder. These local repairs did not require source-code changes.
 
 ### Next technical milestone
 
-Deploy the reviewed `main` through the connected Vercel project. Before enabling
+Hosting is deployed from the connected Vercel project. Before enabling
 configured chat, recover the existing `CONTACT_ENCRYPTION_KEY`, apply the additive
 Unicode-capacity migration, and supply the Supabase public settings. Model
-selection and shared cost/rate limits remain deployment decisions. A setup-page
-deployment can verify hosting first without application credentials.
+selection and shared cost/rate limits remain deployment decisions. Hosting
+verification is complete; configured login/chat/database checks are next.
 
 Before feature work, read [AGENTS.md](AGENTS.md), this status summary, and the
 relevant architecture documents. Update this README in the same change whenever
@@ -124,10 +125,17 @@ repository. See the guide's linked collaboration requirements.
 Project [candid-dartmouth](https://vercel.com/raegendyer/candid-dartmouth) now exists
 with Node 22 and the checked build command. The owner authorized the GitHub
 integration, and this repository's `main` is connected. The first deployment
-can show setup instructions and
-`/api/health` with blank app settings. Configured chat requires the existing data
-key and runtime values in the deployment guide. Record the production URL and
-tested commit after a hosted deployment is verified.
+shows the Candid page with setup required and `/api/health` with blank app
+settings. Configured chat requires the existing data key and runtime values in
+the deployment guide.
+
+First hosted verification, October 31, 2026: production
+https://candid-dartmouth.vercel.app, application commit
+`a571b39969b5ad469086e95d3636350829142a92`. Vercel reported Ready; unauthenticated
+`GET /` and `GET /api/health` returned 200. `GET /api/auth/session` returned the
+expected safe 503 because Supabase runtime settings are absent. This verifies
+hosting, not a live configured login/chat/database flow. GitHub CI passed for
+that commit; the build also passed with `NODE_ENV=production`.
 
 ## Exploratory product direction
 
