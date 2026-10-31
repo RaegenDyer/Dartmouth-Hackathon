@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiError, privateHeaders, requireMutationSession } from "@/lib/auth/server";
 import { memoryDto, memoryErrorResponse } from "@/lib/companion/http";
 import { editMemory } from "@/lib/companion/memory/proposals";
+import { LIMITS } from "@/lib/companion/limits";
 import { getCompanion } from "@/lib/companion/server";
 import { isUuid, readJson } from "@/lib/http/request";
 
@@ -26,7 +27,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 // The in-memory store has no record versions yet, so this omits expectedVersion.
 const editSchema = z
   .strictObject({
-    content: z.string().trim().min(1).max(500).optional(),
+    content: z.string().trim().min(1).max(LIMITS.maxMemoryLength).optional(),
     expiresAt: z.iso.datetime({ offset: true }).nullable().optional(),
   })
   .refine((body) => body.content !== undefined || body.expiresAt !== undefined);

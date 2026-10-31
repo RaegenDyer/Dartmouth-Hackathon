@@ -152,3 +152,59 @@ placeholders. One exact historical fingerprint is documented in
 `.gitleaksignore`; no file or detector rule is excluded. The current fixture
 constructs its dummy payload explicitly, and CI prints fully redacted finding
 details for future scan failures.
+
+## October 31 UI and memory quality pass
+
+Neeraj's UI and saved-memory editor are merged through PR #6 (`2d7d6ca`). The
+Warm hearth theme, generated raster icons, phone tabs, coming-soon labels, public
+landing at `/`, and app at `/app` are preserved.
+
+Natural chat could miss memory suggestions because capture required narrow
+sentence starts, while duplicate detection reused a disclosure heuristic that
+accepted 60% word overlap. Capture now recognizes common prefaces and explicit
+independent factual clauses. Duplicate checks compare content, subject, and
+qualifiers, keeping separate hobbies, people, changed facts, and new details
+distinct. Expired rows do not suppress a freshly stated fact. Signatures are
+prepared once per turn, and a full pending queue stops further insert attempts.
+The limits remain two proposals per turn and 20 pending proposals, with explicit
+Save required before any fact enters approved-memory context.
+
+Self-critique of broader capture exposed possible extraction from quotes,
+reported speech, hypotheticals, and negated facts. Source filtering and model
+grounding regressions cover those cases, invented facts, Unicode place names,
+and explicit opt-outs. These are conservative lexical checks, not semantic
+proof; unusual paraphrases can still be missed. This pass adds no model call.
+
+Synthetic long-content checks reproduced a document over 12,000 pixels tall on
+desktop/tablet while the transcript also scrolled. The app shell now fits the
+viewport, the transcript uses the remaining space, and side panels scroll
+independently without wheel chaining. Tablet users switch panes through the
+existing labeled rail. Auto-follow preserves older-message reading positions.
+The first browser pass exposed absolutely positioned accessibility labels still
+escaping the clipping boundary; positioned shell/transcript containers address
+that cause without globally disabling landing-page scrolling. Short windows,
+phone tabs, keyboard-focusable regions, and composer visibility have regressions.
+Real mobile software-keyboard behavior still needs physical-device testing.
+
+Saved-memory edits previously wrote text before checking expiry. Complete input
+validation now precedes one SQL update and one in-memory context change. A
+text-only edit preserves the original precise expiry; date controls use the
+person's local calendar. Database failures, invalid combined edits, ownership,
+same-origin checks, and maximum length have regressions. Separate competing
+requests still lack optimistic version checks; a single-statement edit does not
+resolve that broader concurrency requirement.
+
+Startup catches network, HTTP, malformed payload, and memory-list loading
+failures with a bounded retry flow. An unavailable suggestions endpoint no longer
+looks like an empty inbox. Memory-edit failures keep the draft visible, prevent
+duplicate pending saves, and allow retry. Browser tests use synthetic API
+fixtures rather than participant data or paid models.
+
+Verification for this quality pass: `npm run check` passes 328 unit tests plus
+105 contract/runtime/voice/Tavus/environment/schema checks; the production build
+passes; all 13 mocked eval suites pass; and 23 active browser checks pass (four
+pre-existing milestone placeholders remain skipped). The browser suite includes
+desktop, tablet, phone, and short windows and validates actual scroll geometry,
+not only CSS declarations. These results do not establish complete natural-
+language understanding, cross-instance atomic turns, or physical-device keyboard
+coverage.

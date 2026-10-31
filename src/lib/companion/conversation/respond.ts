@@ -17,7 +17,7 @@ import {
 } from "../boundary/rules";
 import { enforceInteractionStyle } from "../boundary/style";
 import { contentWords, enforceMemoryDisclosure, replyReferencesMemory } from "../disclosure/enforce";
-import { DEFAULT_POLICY, LIMITS, type GuardrailPolicy } from "../limits";
+import { DEFAULT_POLICY, LIMITS, normalizeForMatching, type GuardrailPolicy } from "../limits";
 import { LEAK_MARKERS, generateWithTimeout, type LlmAdapter } from "../llm/adapter";
 import type { Logger } from "../log";
 import { acceptableModelSuggestion, extractMemoryCandidates } from "../memory/capture";
@@ -365,26 +365,57 @@ export function createConversationService(deps: ConversationDeps) {
 
     const proposed: { id: string; text: string }[] = [];
     const pending = await deps.proposals.listPending(session.userId);
-    const known = new Set([...allMemories, ...pending].map((item) => item.text.toLowerCase()));
-    // Model suggestions first: they are usually single facts. Skip any candidate that
-    // mostly repeats one already saved, pending, or proposed in this turn.
+    // Disclosure intentionally accepts partial overlap; duplicate detection must
+    // not, or "enjoy painting on weekends" hides "enjoy hiking on weekends".
+    // Suppress a fact only when all its content is already covered. A restated
+    // fact with a new detail may be offered for review, and expired facts do not
+    // suppress a fresh statement from the current user message.
+    const factSignature = (value: string) => {
+      const normalized = normalizeForMatching(value).replace(/\b(?:like|love|enjoy)\b/g, "interest");
+      // Keep Unicode names alongside the disclosure helper's English words.
+      const extra = (normalized.match(/[\p{L}\p{N}']+|\p{Extended_Pictographic}/gu) ?? []).filter((word) =>
+        /\P{ASCII}/u.test(word),
+      );
+      // "You used to work there" must not suppress "You work there". Treat
+      // negation, intentions, and exceptions as part of a fact's meaning.
+      const qualifiers = (
+        normalized.match(
+          /\b(?:not|never|no longer|used to|don't|doesn't|didn't|can't|won't|isn't|aren't|wasn't|weren't|want|hope|plan|thinking about|trying to|except|rather than|instead of|without)\b/g,
+        ) ?? []
+      )
+        .sort()
+        .join("|");
+      // A fact about a roommate must not suppress the user's own fact, even
+      // when the hobby and timing match. Keep possessive subjects separate.
+      const subject = normalized.startsWith("your ") ? normalized.split(" ").slice(0, 2).join(" ") : "you";
+      return { words: new Set([...contentWords(normalized), ...extra]), qualifiers, subject };
+    };
+    const known = [...active, ...pending].map((item) => factSignature(item.text));
+    // Model suggestions first: they are usually single facts.
     const candidates = [...modelSuggestions, ...extractMemoryCandidates(text)].map((item) => {
       const trimmed = item.replace(/\s+/g, " ").trim();
       return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
     });
-    const overlaps = (candidate: string) =>
-      [...known].some(
-        (existing) => replyReferencesMemory(existing, candidate) || replyReferencesMemory(candidate, existing),
-      );
     for (const candidate of candidates) {
-      if (proposed.length >= MAX_SUGGESTIONS_PER_TURN) break;
-      if (known.has(candidate.toLowerCase()) || overlaps(candidate)) continue;
-      known.add(candidate.toLowerCase());
+      if (proposed.length >= 2) break;
+      const signature = factSignature(candidate);
+      if (
+        signature.words.size > 0 &&
+        known.some(
+          (existing) =>
+            existing.qualifiers === signature.qualifiers &&
+            existing.subject === signature.subject &&
+            [...signature.words].every((word) => existing.words.has(word)),
+        )
+      )
+        continue;
       try {
         const proposal = await deps.proposals.create(session.userId, candidate, at, session.id);
+        known.push(signature);
         proposed.push({ id: proposal.id, text: proposal.text });
       } catch (error) {
         if (!(error instanceof MemoryError && error.code === "LIMIT_REACHED")) throw error;
+        break;
       }
     }
 

@@ -27,7 +27,8 @@ configured chat requires the established encryption key and runtime settings bel
    framework, install command, and build command. Keep the output directory at
    the framework default.
 4. Leave application settings empty for the first hosting verification. This
-   shows setup instructions and keeps health credential-free. It does not enable
+   keeps the landing and health credential-free; `/app` shows a connection-retry
+   notice until its runtime services are configured. It does not enable
    working chat. No database changes are needed to verify this setup deployment.
 5. Deploy the reviewed `main`, wait for Ready, and open the assigned domain.
    In Project Settings -> Environments -> Production -> Branch Tracking, confirm
@@ -64,8 +65,9 @@ the plan requirements before relying on collaborator deployments.
 1. Open the production domain and confirm the public Candid landing page loads.
    It stays public even with an existing session. Use "Open app" or "Start a
    conversation" to enter `/app`: a new visitor sees the adult confirmation;
-   an existing confirmed session opens chat. Setup instructions appear only in
-   `/app` if the runtime environment is unconfigured. "Back to home" returns
+   an existing confirmed session opens chat. A connection-retry notice appears in
+   `/app` if runtime services are unconfigured or unavailable, or memory/suggestion
+   loading fails. "Back to home" returns
    to the landing page without signing out.
 2. Open `/api/health` on that same domain. Expect HTTP 200 and:
 
