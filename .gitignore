@@ -25,3 +25,6 @@ Thumbs.db
 # Test output
 /playwright-report/
 /test-results/
+
+# Local editor/agent settings
+.claude/settings.local.json
