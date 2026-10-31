@@ -68,12 +68,30 @@ async function readError(response: Response): Promise<ApiErrorBody> {
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
 const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" });
 
-type IconName = "chat" | "memories" | "home" | "settings";
+type IconName = "chat" | "memories" | "home" | "settings" | "mic";
 
 /** Decorative raster icon (generated artwork in public/icons); text labels stay beside it. */
 function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
   return <Image className="icon" src={`/icons/${name}.png`} alt="" aria-hidden="true" width={size} height={size} />;
 }
+
+/** Marks a planned feature that is visible but not usable yet. */
+function ComingSoon() {
+  return <span className="soon">coming soon</span>;
+}
+
+const SCENARIOS = [
+  "talk about my day",
+  "find activities I'd like",
+  "chat in a tone I choose",
+  "plan a small social step",
+  "just listen",
+];
+const STYLES = [
+  { name: "listener", hint: "mostly listens and reflects back" },
+  { name: "practical", hint: "offers concrete ideas" },
+  { name: "playful", hint: "lighter and a bit funny" },
+];
 
 function Wordmark() {
   return (
@@ -129,6 +147,7 @@ export function CompanionApp() {
   const [tab, setTab] = useState<Tab>("chat");
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [laterIds, setLaterIds] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<{ id: string; text: string; keep: boolean; date: string } | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
   const resetChat = useCallback(() => {
@@ -393,6 +412,31 @@ export function CompanionApp() {
     setMemories((current) => current.filter((item) => item.id !== memory.id));
   }
 
+  function startEdit(memory: SavedMemory) {
+    const date = memory.expiresAt ? memory.expiresAt.slice(0, 10) : "";
+    setEditing({ id: memory.id, text: memory.text, keep: memory.expiresAt === null, date });
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    // The chosen date expires at the end of that local day.
+    const expiresAt = editing.keep
+      ? null
+      : editing.date
+        ? new Date(`${editing.date}T23:59:59`).toISOString()
+        : undefined;
+    if (!editing.keep && !expiresAt) return setError("Choose an expiry date, or keep it until you delete it.");
+    const response = await fetch(
+      `/api/memories/${editing.id}`,
+      jsonInit("PATCH", { content: editing.text.trim(), expiresAt }),
+    );
+    if (!response.ok) return setError((await readError(response)).error?.message ?? "That memory could not be saved.");
+    const { memory } = (await response.json()) as { memory: SavedMemory };
+    setMemories((current) => current.map((item) => (item.id === memory.id ? memory : item)));
+    setEditing(null);
+    setError(null);
+  }
+
   if (status === "chat-disabled") return <ChatDisabledNotice />;
 
   if (status !== "ready") {
@@ -587,6 +631,20 @@ export function CompanionApp() {
           </button>
         </nav>
         {conversationList}
+        <section className="styles" aria-labelledby="style-title">
+          <h2 id="style-title" className="label heading-icon">
+            Companion style <ComingSoon />
+          </h2>
+          <p className="fine-print">Choose how Candid talks with you, and later its voice.</p>
+          <div className="style-options">
+            {STYLES.map((style) => (
+              <button key={style.name} type="button" className="ghost style-option" disabled>
+                <span>{style.name}</span>
+                <span className="fine-print">{style.hint}</span>
+              </button>
+            ))}
+          </div>
+        </section>
         <div className="rail-end">
           <span className="label heading-icon">
             <Icon name="settings" size={20} />
@@ -674,6 +732,15 @@ export function CompanionApp() {
                       <span className="label">one small step this week</span>
                       <p>{step}</p>
                       <span className="fine-print">Only if it sounds good. No pressure either way.</span>
+                      <div className="actions soon-row" aria-label="Tracking your weekly step is coming soon">
+                        <button type="button" className="soft small" disabled>
+                          I did it
+                        </button>
+                        <button type="button" className="ghost small" disabled>
+                          skip
+                        </button>
+                        <ComingSoon />
+                      </div>
                     </div>
                   )}
                   {message.proposals?.map((proposal) => (
@@ -699,28 +766,53 @@ export function CompanionApp() {
               </button>
             </div>
           ) : (
-            <form className="composer" onSubmit={(event) => void send(event)}>
-              <label htmlFor="message" className="sr-only">
-                Write a message
-              </label>
-              <textarea
-                id="message"
-                rows={1}
-                maxLength={MAX_MESSAGE}
-                placeholder="tell Candid about your day…"
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                onKeyDown={onComposerKey}
-                aria-describedby="message-hint"
-              />
-              <button type="submit" className="primary send" disabled={sending || !draft.trim()}>
-                send
-              </button>
-              <p id="message-hint" className="hint">
-                Enter to send, Shift+Enter for a new line.
-                {draft.length > MAX_MESSAGE - 100 && ` ${MAX_MESSAGE - draft.length} characters left.`}
-              </p>
-            </form>
+            <>
+              {messages.length <= 1 && (
+                <div className="scenarios" role="group" aria-label="Scenarios, coming soon">
+                  <span className="label">
+                    start with a scenario <ComingSoon />
+                  </span>
+                  <div className="chip-row">
+                    {SCENARIOS.map((name) => (
+                      <button key={name} type="button" className="ghost small chip" disabled>
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <form className="composer" onSubmit={(event) => void send(event)}>
+                <label htmlFor="message" className="sr-only">
+                  Write a message
+                </label>
+                <textarea
+                  id="message"
+                  rows={1}
+                  maxLength={MAX_MESSAGE}
+                  placeholder="tell Candid about your day…"
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={onComposerKey}
+                  aria-describedby="message-hint"
+                />
+                <button
+                  type="button"
+                  className="mic"
+                  disabled
+                  aria-label="Voice conversations, coming soon"
+                  title="Voice conversations are coming soon"
+                >
+                  <Icon name="mic" size={26} />
+                </button>
+                <button type="submit" className="primary send" disabled={sending || !draft.trim()}>
+                  send
+                </button>
+                <p id="message-hint" className="hint">
+                  Enter to send, Shift+Enter for a new line. Voice is coming soon.
+                  {draft.length > MAX_MESSAGE - 100 && ` ${MAX_MESSAGE - draft.length} characters left.`}
+                </p>
+              </form>
+            </>
           )}
         </section>
       </main>
@@ -783,33 +875,101 @@ export function CompanionApp() {
           <ul className="items">
             {memories.map((memory) => (
               <li key={memory.id} className="memory">
-                <span className="label">
-                  <span className="dot" aria-hidden="true" />
-                  {memory.expiresAt
-                    ? ` expires ${dateFormat.format(new Date(memory.expiresAt))}`
-                    : " kept until you delete it"}
-                </span>
-                <span>{memory.text}</span>
-                <div className="actions">
-                  {memory.expiresAt && (
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={() => void keepMemory(memory)}
-                      aria-label={`Keep memory: ${memory.text}`}
-                    >
-                      keep
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="ghost small"
-                    onClick={() => void deleteMemory(memory)}
-                    aria-label={`Delete memory: ${memory.text}`}
+                {editing?.id === memory.id ? (
+                  <form
+                    className="edit-memory"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void saveEdit();
+                    }}
                   >
-                    delete
-                  </button>
-                </div>
+                    <label htmlFor={`edit-${memory.id}`} className="label">
+                      edit memory
+                    </label>
+                    <textarea
+                      id={`edit-${memory.id}`}
+                      rows={2}
+                      maxLength={280}
+                      value={editing.text}
+                      onChange={(event) => setEditing({ ...editing, text: event.target.value })}
+                    />
+                    <fieldset className="expiry-choice">
+                      <legend className="label">how long to keep it</legend>
+                      <label className="keep">
+                        <input
+                          type="radio"
+                          name={`expiry-${memory.id}`}
+                          checked={editing.keep}
+                          onChange={() => setEditing({ ...editing, keep: true })}
+                        />{" "}
+                        until I delete it
+                      </label>
+                      <label className="keep">
+                        <input
+                          type="radio"
+                          name={`expiry-${memory.id}`}
+                          checked={!editing.keep}
+                          onChange={() => setEditing({ ...editing, keep: false })}
+                        />{" "}
+                        until
+                        <input
+                          type="date"
+                          aria-label="Expiry date"
+                          value={editing.date}
+                          min={new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)}
+                          max={new Date(Date.now() + 365 * 86_400_000).toISOString().slice(0, 10)}
+                          onChange={(event) => setEditing({ ...editing, keep: false, date: event.target.value })}
+                        />
+                      </label>
+                    </fieldset>
+                    <div className="actions">
+                      <button type="submit" className="soft small save">
+                        save changes
+                      </button>
+                      <button type="button" className="ghost small" onClick={() => setEditing(null)}>
+                        cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <span className="label">
+                      <span className="dot" aria-hidden="true" />
+                      {memory.expiresAt
+                        ? ` expires ${dateFormat.format(new Date(memory.expiresAt))}`
+                        : " kept until you delete it"}
+                    </span>
+                    <span>{memory.text}</span>
+                    <div className="actions">
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={() => startEdit(memory)}
+                        aria-label={`Edit memory: ${memory.text}`}
+                      >
+                        edit
+                      </button>
+                      {memory.expiresAt && (
+                        <button
+                          type="button"
+                          className="ghost small"
+                          onClick={() => void keepMemory(memory)}
+                          aria-label={`Keep memory: ${memory.text}`}
+                        >
+                          keep
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={() => void deleteMemory(memory)}
+                        aria-label={`Delete memory: ${memory.text}`}
+                      >
+                        delete
+                      </button>
+                    </div>
+                  </>
+                )}
               </li>
             ))}
           </ul>

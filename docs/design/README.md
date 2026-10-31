@@ -54,6 +54,7 @@ raster artwork.
 | Icons (interim) | Chat bubble, bookmark (memories), house (history), and gear (your data), cropped from the generated [raster icon family study](concepts/raster-icon-family-study.png) and exported as transparent 192px PNGs in `public/icons/`, approved by Neeraj Kumar on 2026-10-31. Text labels stay beside every icon. Final icons should still be generated individually at production resolution |
 | Image generation | Not used: no image-generation tool in this session; the collaborator approved the HTML preview. Illustrations and the mascot still need image-generated artwork |
 | Approved scope | All signed-in and signed-out app screens on desktop and phone |
+| Planned-feature placeholders | 2026-10-31, Neeraj Kumar: visible but disabled controls with a honey "coming soon" tag, placed where each feature will live: scenario chips above the composer (new conversation only), a microphone button (generated raster icon) beside send, companion style options (listener, practical, playful) in the sidebar and history tab, and "I did it" / "skip" on the weekly step card |
 | Decision date | 2026-10-31 |
 
 ### Previous decision: Candid minimal (superseded by Warm hearth)

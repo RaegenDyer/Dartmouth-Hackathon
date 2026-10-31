@@ -50,7 +50,7 @@ are in `src/lib/contracts/index.ts`.
 | `POST /api/memory-proposals/:id/accept` | `{content, keep}` (no `expectedVersion` yet); expires after the policy period unless `keep` (MP-3); approved memory | Local |
 | `POST /api/memory-proposals/:id/dismiss` | No body yet; 204 | Local |
 | `GET /api/memories` | Approved, unexpired memories (no versions yet) | Local |
-| `PATCH /api/memories/:id` | `updateMemorySchema`; saved memory and context revision | Planned |
+| `PATCH /api/memories/:id` | `{content?, expiresAt?}` (no `expectedVersion` yet); edited text passes the same content check as suggestions; expiry is a future date within a year, or `null` to keep; saved memory | Implemented |
 | `DELETE /api/memories/:id` | No body yet; 204 | Local |
 | `POST /api/memories/:id/keep` | Removes the memory's expiry (MP-3) | Local |
 | `GET /api/social-actions` | Actor's proposals and accepted/completed actions | Planned |

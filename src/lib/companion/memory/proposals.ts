@@ -111,3 +111,38 @@ export async function dismissProposal(
   if (!(await deps.proposals.get(userId, proposalId))) throw new MemoryError("NOT_FOUND", "Suggestion not found.");
   await deps.proposals.reject(userId, proposalId);
 }
+
+/** Longest custom expiry a user can pick; "keep" (null) stays available. */
+export const MAX_CUSTOM_EXPIRY_MS = 366 * 24 * 60 * 60 * 1000;
+
+/**
+ * The user edits a saved memory's text and/or expiry. Edited text gets the same
+ * content check as suggestions (MP-1/MP-2); expiry must be in the future and
+ * within a year, or null to keep it until deleted (MP-3).
+ */
+export async function editMemory(
+  deps: { memories: MemoryRepository },
+  userId: string,
+  memoryId: string,
+  input: { text?: string; expiresAt?: Date | null },
+  now: Date,
+): Promise<Memory> {
+  let memory: Memory | null = null;
+  if (input.text !== undefined) {
+    const text = validateMemoryText(input.text);
+    if (!isAllowedMemoryText(text)) throw new MemoryError("INVALID_TEXT", DISALLOWED_MEMORY_MESSAGE);
+    memory = await deps.memories.updateText(userId, memoryId, text);
+  }
+  if (input.expiresAt !== undefined) {
+    const expiresAt = input.expiresAt;
+    if (
+      expiresAt &&
+      (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() - now.getTime() > MAX_CUSTOM_EXPIRY_MS)
+    ) {
+      throw new MemoryError("INVALID_EXPIRY", "Choose a date within the next year, or keep it until you delete it.");
+    }
+    memory = await deps.memories.setExpiry(userId, memoryId, expiresAt, now);
+  }
+  if (!memory) throw new MemoryError("INVALID_TEXT", "Nothing to change.");
+  return memory;
+}

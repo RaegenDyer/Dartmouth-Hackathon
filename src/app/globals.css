@@ -546,7 +546,7 @@ button:disabled {
 }
 .composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: end;
   background: var(--raised);
@@ -645,7 +645,8 @@ button:disabled {
   font-size: 13px;
   color: var(--muted);
 }
-.keep input {
+.keep input[type="checkbox"],
+.keep input[type="radio"] {
   margin-top: 3px;
   width: 18px;
   height: 18px;
@@ -686,6 +687,118 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+/* "Coming soon" placeholders: visible, disabled, clearly labeled. */
+.soon {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--honey-ink);
+  background: var(--honey-soft);
+  border: 1px solid var(--honey);
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-left: 6px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+.soon-row {
+  align-items: center;
+}
+.soon-row .soon {
+  margin-left: 2px;
+}
+button:disabled.chip,
+button:disabled.style-option,
+.soon-row button:disabled,
+button:disabled.mic {
+  opacity: 0.55;
+}
+.scenarios {
+  display: grid;
+  gap: 6px;
+}
+.chip-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  white-space: nowrap;
+}
+.mic {
+  min-height: 44px;
+  width: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border-color: var(--line);
+}
+.styles {
+  display: grid;
+  gap: 6px;
+}
+.styles h2 {
+  margin: 4px 0 0;
+}
+.style-options {
+  display: grid;
+  gap: 4px;
+}
+.style-option {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  text-align: left;
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+.style-option .fine-print {
+  font-size: 12px;
+}
+.edit-memory {
+  display: grid;
+  gap: 8px;
+}
+.edit-memory textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 16px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--ink);
+  resize: vertical;
+}
+.expiry-choice {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 6px;
+}
+.expiry-choice legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+.expiry-choice label {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.expiry-choice input[type="date"] {
+  font: inherit;
+  font-size: 16px;
+  min-height: 36px;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--ink);
 }
 .tabbar {
   display: none;
@@ -779,6 +892,12 @@ button:disabled {
   .chat {
     padding: 4px 12px 10px;
     gap: 8px;
+  }
+  .chip-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
   }
   .log {
     max-height: none;
