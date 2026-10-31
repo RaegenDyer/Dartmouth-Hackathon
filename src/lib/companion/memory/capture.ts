@@ -83,6 +83,21 @@ export function isAllowedMemoryText(text: string): boolean {
   return !EXCLUDED_PATTERNS.some((pattern) => pattern.test(normalized)) && !checkUserMessage(text).triggered;
 }
 
+/**
+ * Filters model-suggested memories: second person, within length, allowed
+ * content (MP-1/MP-2), and grounded in what the user actually just said.
+ */
+export function acceptableModelSuggestion(suggestion: string, userMessage: string): boolean {
+  const text = suggestion.replace(/\s+/g, " ").trim();
+  if (!text || text.length > LIMITS.maxMemoryLength || !/^(?:you|your|you're|you've)\b/i.test(text)) return false;
+  if (!isAllowedMemoryText(text) || checkUserMessage(userMessage).triggered) return false;
+  const said = new Set(normalizeForMatching(userMessage).match(/[a-z0-9']{3,}/g) ?? []);
+  const grounded = (normalizeForMatching(text).match(/[a-z0-9']{4,}/g) ?? []).filter(
+    (word) => !["your", "you're", "you've"].includes(word),
+  );
+  return grounded.some((word) => said.has(word));
+}
+
 export function isRememberableFact(sentence: string): boolean {
   const normalized = normalizeForMatching(sentence).replace(FILLER, "");
   if (normalized.endsWith("?") || normalized.length < 8) return false;

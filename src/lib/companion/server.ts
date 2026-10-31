@@ -1,10 +1,12 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomBytes } from "node:crypto";
 import { createConversationService, runRetention, type RespondResult } from "./conversation/respond";
 import { createInMemoryCompanion } from "./in-memory";
 import { MINUTE_MS, policyFromEnvironment } from "./limits";
 import { createLlmAdapter } from "./llm/select";
 import { consoleLogger } from "./log";
+import { createSupabaseRepositories } from "./supabase-store";
 import { createMessageRateLimiter } from "./rate-limit";
 import { parseContactKey } from "./safety/contact";
 
@@ -42,28 +44,47 @@ function createStore() {
     turns: new Map<string, Promise<RespondResult>>(),
     /** DB-5 redirect counts per user. */
     redirectCounts: new Map<string, number>(),
-    lastRetentionRun: 0,
+    /** Last retention run per user. */
+    lastRetentionRun: new Map<string, number>(),
   };
 }
 
 type CompanionStore = ReturnType<typeof createStore>;
 const globalStore = globalThis as typeof globalThis & { __companionStore?: CompanionStore };
 
+/** "supabase" (default) stores data in the database; "memory" keeps it in this process (tests). */
+export function storageMode(env: Record<string, string | undefined> = process.env): "supabase" | "memory" {
+  return env.COMPANION_STORAGE?.trim().toLowerCase() === "memory" ? "memory" : "supabase";
+}
+
+/** The signed-in caller whose session (and RLS) every database query uses. */
+export interface CompanionCaller {
+  supabase: SupabaseClient;
+  userId: string;
+}
+
 /**
- * The data store is one per server process. The conversation service, model
- * adapter, and policy are rebuilt per request, so edited guardrail code and
- * changed settings apply immediately. Runs retention at most once a minute.
+ * Builds the conversation service for one request. Data lives in Supabase under
+ * the caller's session (or in process memory in "memory" mode). The service,
+ * model adapter, and policy are rebuilt per request, so edited guardrail code
+ * and changed settings apply immediately. Expired memories are removed for the
+ * caller at most once a minute per process.
  */
-export function getCompanion() {
+export function getCompanion(caller: CompanionCaller) {
   const store = (globalStore.__companionStore ??= createStore());
+  const repositories =
+    storageMode() === "memory"
+      ? store.repositories
+      : createSupabaseRepositories(caller.supabase, caller.userId, resolveDataKey());
   const policy = policyFromEnvironment();
   const nowMs = Date.now();
-  if (nowMs - store.lastRetentionRun >= RETENTION_INTERVAL_MS) {
-    store.lastRetentionRun = nowMs;
-    void runRetention(store.repositories, new Date(nowMs), policy);
+  const lastRun = store.lastRetentionRun.get(caller.userId) ?? 0;
+  if (nowMs - lastRun >= RETENTION_INTERVAL_MS) {
+    store.lastRetentionRun.set(caller.userId, nowMs);
+    void runRetention(repositories, new Date(nowMs), policy).catch(() => undefined);
   }
   const deps = {
-    ...store.repositories,
+    ...repositories,
     llm: createLlmAdapter(),
     log: consoleLogger,
     policy,

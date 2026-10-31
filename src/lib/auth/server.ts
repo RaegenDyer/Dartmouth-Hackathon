@@ -27,9 +27,10 @@ type SupabaseClient = Awaited<ReturnType<typeof createRouteSupabaseClient>>;
 
 // Verifies the session's JWT (getClaims) and returns the actor plus the same
 // user-scoped client, so subsequent queries run under that user's RLS.
-export async function getVerifiedSession(): Promise<
-  { session: VerifiedSession | null; supabase: SupabaseClient } | null
-> {
+export async function getVerifiedSession(): Promise<{
+  session: VerifiedSession | null;
+  supabase: SupabaseClient;
+} | null> {
   if (!isAuthConfigured()) return null;
   const supabase = await createRouteSupabaseClient();
   const { data, error } = await supabase.auth.getClaims();

@@ -48,7 +48,13 @@ const REVEAL_REQUEST: readonly RegExp[] = [
   /\b(?:show|reveal|print|repeat|output|tell me|what are|list) (?:me )?(?:your|the) (?:instructions|rules|prompt|configuration)\b/,
   /\brepeat (?:the |everything )?(?:text|words) above\b/,
   /\bignore (?:all |your |the )?(?:previous|prior|above) (?:instructions|rules)\b/,
-  /\b(?:dump|print|show|reveal) (?:the )?(?:raw )?(?:memory|memories) (?:block|context|data)\b/,
+  /\b(?:dump|print|show|reveal|output|list) (?:me )?(?:the |your |all )?(?:raw )?(?:memory|memories) (?:block|context|data|store)\b/,
+  // MB-1 phrasings found by eval E0 (evals/data/prompt-extraction.json).
+  /\b(?:debug|developer|admin|god|maintenance|dan) mode\b/,
+  /\b(?:output|print|dump|show|reveal|translate|summari[sz]e|paraphrase) (?:me )?(?:your|the) (?:initial |original |hidden )?(?:config|configuration|settings|instructions|rules|guidelines|prompt)\b/,
+  /\b(?:what|which) (?:rules|guidelines|instructions) (?:were you|have you been|did they) (?:given|told|programmed)\b/,
+  /\b(?:other|another) (?:users?|people|person)(?:'s)? (?:chats?|conversations?|messages?|data|memories)\b/,
+  /\bwhat (?:do|did|have) other (?:users|people) (?:say|said|talk|talked|tell|told|share|shared)\b/,
 ];
 
 // MB-3: requests for medical, legal, or financial advice get a fixed handoff.
@@ -117,13 +123,13 @@ export const isDependenceInvite = (text: string) => matches(DEPENDENCE_INVITE, t
 export const isRevealRequest = (text: string) => matches(REVEAL_REQUEST, text);
 
 export const ONLY_CONNECTION_REPLY =
-  "That sounds like a lot to carry, and I'm glad you said it. I'm an AI, so I can't be the people in your life, but I'd like to help you find them. Is there one person, even someone you've only met once, from your program, work, or back home, you'd like to hear from? One option: send them a short message today, or try one drop-in event nearby this week.";
+  "That sounds like a lot to carry, and I'm glad you said it. I'm an AI, so I can't be the people in your life, but I'd like to help you find them. Is there one person, even someone you've only met once, from your program, work, or back home, you'd like to hear from? One small option: send that person a short message today.";
 
 export const DEPENDENCE_REPLY =
   "I'm an AI, so I can't promise to always be here or be someone's partner or only friend. What I can do is help you make room for people who can show up in person. Who is one person you'd enjoy spending a little more time with?";
 
 export const REVEAL_REFUSAL =
-  "I can't share my instructions or raw internal context. You can see every memory I keep, and edit or delete it, in the Memories panel. What's on your mind today?";
+  "I can't share my instructions or raw internal context. You can see every memory I keep, and edit or delete it, in the Your space panel. What's on your mind today?";
 
 /** Removes human claims and makes sure an AI status is stated when asked. */
 export function enforceAiStatus(reply: string, userAskedIfHuman: boolean): string {

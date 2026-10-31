@@ -207,7 +207,11 @@ describe("guardrail helpers", () => {
   });
 
   it("parses model JSON and falls back to plain text", () => {
-    expect(parseModelJson('{"reply":"hi","memories_used":["m1",3]}')).toEqual({ text: "hi", memoriesUsed: ["m1"] });
+    expect(parseModelJson('{"reply":"hi","memories_used":["m1",3]}')).toEqual({
+      text: "hi",
+      memoriesUsed: ["m1"],
+      memorySuggestions: [],
+    });
     expect(parseModelJson("plain")).toEqual({ text: "plain", memoriesUsed: [] });
   });
 

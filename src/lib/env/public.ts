@@ -11,28 +11,26 @@ function isBrowserSafeSupabaseKey(value: string): boolean {
   }
   try {
     const payload: unknown = JSON.parse(atob(parts[1]!.replace(/-/g, "+").replace(/_/g, "/")));
-    return typeof payload === "object" && payload !== null &&
-      "role" in payload && payload.role === "anon";
+    return typeof payload === "object" && payload !== null && "role" in payload && payload.role === "anon";
   } catch {
     return false;
   }
 }
 
 export const publicEnvironmentSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().trim().pipe(z.url({ protocol: /^https?$/ })),
-  // Privileged secret/service_role keys must not be used by public clients.
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z
+  NEXT_PUBLIC_SUPABASE_URL: z
     .string()
     .trim()
-    .refine(isBrowserSafeSupabaseKey),
+    .pipe(z.url({ protocol: /^https?$/ })),
+  // Privileged secret/service_role keys must not be used by public clients.
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().trim().refine(isBrowserSafeSupabaseKey),
 });
 
 export function getPublicEnvironment() {
   // Next.js requires literal accesses to inline browser-safe settings.
   const parsed = publicEnvironmentSchema.safeParse({
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   });
   if (!parsed.success) {
     const fields = parsed.error.issues.map((issue) => issue.path.join("."));

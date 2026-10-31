@@ -12,7 +12,10 @@ export const dynamic = "force-dynamic";
 export async function DELETE(request: Request) {
   const auth = await requireMutationSession(request);
   if ("response" in auth) return auth.response;
-  await deleteAccountData(getCompanion().deps, auth.session.actor.userId);
+  await deleteAccountData(
+    getCompanion({ supabase: auth.supabase, userId: auth.session.actor.userId }).deps,
+    auth.session.actor.userId,
+  );
   await auth.supabase.auth.signOut({ scope: "local" });
   return new Response(null, { status: 204, headers: privateHeaders });
 }

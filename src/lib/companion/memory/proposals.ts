@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { DEFAULT_POLICY, type GuardrailPolicy } from "../limits";
+import { DEFAULT_POLICY, LIMITS, type GuardrailPolicy } from "../limits";
 import { isAllowedMemoryText } from "./capture";
 import { MemoryError, validateMemoryText, type Memory, type MemoryRepository } from "./store";
 
@@ -9,6 +9,8 @@ import { MemoryError, validateMemoryText, type Memory, type MemoryRepository } f
 export interface MemoryProposal {
   id: string;
   userId: string;
+  /** The conversation the suggestion came from; deleting it removes the suggestion. */
+  sessionId: string | null;
   text: string;
   createdAt: Date;
 }
@@ -16,16 +18,21 @@ export interface MemoryProposal {
 export const MAX_PENDING_PROPOSALS = 20;
 
 export interface MemoryProposalRepository {
-  /** Pending proposals, oldest first. */
+  /** Pending, unexpired proposals, oldest first. */
   listPending(userId: string): Promise<MemoryProposal[]>;
-  create(userId: string, text: string, now: Date): Promise<MemoryProposal>;
+  create(userId: string, text: string, now: Date, sessionId: string | null): Promise<MemoryProposal>;
   get(userId: string, id: string): Promise<MemoryProposal | null>;
-  remove(userId: string, id: string): Promise<void>;
+  /** Atomically saves the reviewed text as a memory and resolves the proposal. */
+  accept(userId: string, id: string, text: string, expiresAt: Date | null, now: Date): Promise<Memory>;
+  /** Resolves the proposal without saving anything. */
+  reject(userId: string, id: string): Promise<void>;
   deleteAllForUser(userId: string): Promise<void>;
 }
 
 export class InMemoryMemoryProposalRepository implements MemoryProposalRepository {
   private readonly rows = new Map<string, MemoryProposal>();
+
+  constructor(private readonly memories: MemoryRepository) {}
 
   async listPending(userId: string) {
     return [...this.rows.values()]
@@ -34,11 +41,11 @@ export class InMemoryMemoryProposalRepository implements MemoryProposalRepositor
       .map((proposal) => ({ ...proposal, createdAt: new Date(proposal.createdAt) }));
   }
 
-  async create(userId: string, text: string, now: Date) {
+  async create(userId: string, text: string, now: Date, sessionId: string | null) {
     if ((await this.listPending(userId)).length >= MAX_PENDING_PROPOSALS) {
       throw new MemoryError("LIMIT_REACHED", `At most ${MAX_PENDING_PROPOSALS} suggestions can wait for review.`);
     }
-    const proposal = { id: randomUUID(), userId, text: validateMemoryText(text), createdAt: new Date(now) };
+    const proposal = { id: randomUUID(), userId, sessionId, text: validateMemoryText(text), createdAt: new Date(now) };
     this.rows.set(proposal.id, proposal);
     return { ...proposal };
   }
@@ -48,8 +55,20 @@ export class InMemoryMemoryProposalRepository implements MemoryProposalRepositor
     return proposal && proposal.userId === userId ? { ...proposal } : null;
   }
 
-  async remove(userId: string, id: string) {
+  async accept(userId: string, id: string, text: string, expiresAt: Date | null, now: Date) {
+    if (!(await this.get(userId, id))) throw new MemoryError("NOT_FOUND", "Suggestion not found.");
+    const memory = await this.memories.create(userId, text, now, expiresAt);
+    this.rows.delete(id);
+    return memory;
+  }
+
+  async reject(userId: string, id: string) {
     if (this.rows.get(id)?.userId === userId) this.rows.delete(id);
+  }
+
+  /** Drops suggestions from a deleted conversation. */
+  deleteForSession(sessionId: string) {
+    for (const [id, proposal] of this.rows) if (proposal.sessionId === sessionId) this.rows.delete(id);
   }
 
   async deleteAllForUser(userId: string) {
@@ -77,10 +96,11 @@ export async function approveProposal(
   if (!proposal) throw new MemoryError("NOT_FOUND", "Suggestion not found.");
   const text = validateMemoryText(input.text);
   if (!isAllowedMemoryText(text)) throw new MemoryError("INVALID_TEXT", DISALLOWED_MEMORY_MESSAGE);
+  if ((await deps.memories.list(userId)).length >= LIMITS.maxMemoriesPerUser) {
+    throw new MemoryError("LIMIT_REACHED", `You can keep at most ${LIMITS.maxMemoriesPerUser} memories.`);
+  }
   const expiresAt = input.keep ? null : new Date(now.getTime() + policy.memoryExpiryMs);
-  const memory = await deps.memories.create(userId, text, now, expiresAt);
-  await deps.proposals.remove(userId, proposalId);
-  return memory;
+  return deps.proposals.accept(userId, proposalId, text, expiresAt, now);
 }
 
 export async function dismissProposal(
@@ -89,5 +109,5 @@ export async function dismissProposal(
   proposalId: string,
 ): Promise<void> {
   if (!(await deps.proposals.get(userId, proposalId))) throw new MemoryError("NOT_FOUND", "Suggestion not found.");
-  await deps.proposals.remove(userId, proposalId);
+  await deps.proposals.reject(userId, proposalId);
 }

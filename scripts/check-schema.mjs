@@ -4,7 +4,8 @@ import { PGlite } from '@electric-sql/pglite';
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const db = await PGlite.create();
-const source = new URL('../supabase/migrations/202610300001_initial_schema.sql', import.meta.url);
+const sources = ['202610300001_initial_schema.sql', '202610310001_chat_persistence.sql']
+  .map(name => new URL('../supabase/migrations/' + name, import.meta.url));
 let checks = 0;
 function pass(label) { checks++; console.log('PASS ' + label); }
 async function expectError(label, sql, params, codes) {
@@ -31,8 +32,8 @@ try {
     grant usage on schema auth to anon, authenticated, service_role;
     grant execute on function auth.uid() to anon, authenticated, service_role;
   `);
-  await db.exec(await readFile(source, 'utf8'));
-  pass('migration applies to isolated PostgreSQL runtime');
+  for (const source of sources) await db.exec(await readFile(source, 'utf8'));
+  pass('migrations apply to isolated PostgreSQL runtime');
   await db.query('insert into auth.users(id) values ($1), ($2)', [A, B]);
   assert.equal((await db.query('select count(*)::int as n from public.profiles')).rows[0].n, 2);
   pass('Auth insert trigger creates both profiles');
@@ -128,9 +129,37 @@ try {
   assert.equal((await db.query('select source_proposal_id from public.memories where id=$1', [m2])).rows[0].source_proposal_id, null);
   assert.equal((await db.query('select conversation_id from public.social_actions where id=$1', [action])).rows[0].conversation_id, null);
   pass('conversation deletion preserves approved memory/action with detached sources');
+
+  // 202610310001_chat_persistence
+  const cc = (await db.query('insert into public.conversations(user_id,title_sealed) values ($1,$2) returning id, kept, disclosed, ended_reason', [A, 'v2.sealed-title'])).rows[0];
+  assert.equal(cc.kept, true); assert.equal(cc.disclosed, false); assert.equal(cc.ended_reason, null);
+  await db.query("update public.conversations set disclosed=true, ended_reason='safety', memories_referenced=$1 where id=$2", [[A], cc.id]);
+  pass('owner can record conversation state; threads are kept by default');
+  await expectError('unknown ended reason rejected', "update public.conversations set ended_reason='other' where id=$1", [cc.id], ['23514']);
+  await expectError('context epoch still not client-writable', 'update public.conversations set context_epoch=99 where id=$1', [cc.id], ['42501']);
+  const epoch = (await db.query('select context_epoch from public.conversations where id=$1', [cc.id])).rows[0].context_epoch;
+  await db.query('insert into public.messages(user_id,conversation_id,role,content,client_request_id,context_epoch,safety) values ($1,$2,$3,$4,$5,$6,true)', [A, cc.id, 'user', 'v2.hidden', requestId, epoch]);
+  pass('messages accept the safety flag');
+  await actor(B);
+  assert.equal((await db.query('select * from public.conversations where id=$1', [cc.id])).rows.length, 0);
+  assert.equal((await db.query("update public.conversations set ended_reason=null where id=$1 returning id", [cc.id])).rows.length, 0);
+  pass('cross-user conversation state is neither visible nor writable');
+  await actor(A);
+  const pc = (await db.query('insert into public.memory_proposals(user_id,conversation_id,suggested_content) values ($1,$2,$3) returning id', [A, cc.id, 'v2.proposal'])).rows[0].id;
+  await db.query('select * from public.accept_memory_proposal($1,null,null,1)', [pc]);
+  assert((await db.query('select memory_changed_at from public.profiles where id=$1', [A])).rows[0].memory_changed_at);
+  pass('memory change records memory_changed_at');
+  await db.query('insert into public.emergency_contacts(user_id,sealed) values ($1,$2)', [A, 'v2.contact']);
+  await expectError('cannot store a contact for another user', 'insert into public.emergency_contacts(user_id,sealed) values ($1,$2)', [B, 'v2.contact'], ['42501']);
+  await actor(B);
+  assert.equal((await db.query('select * from public.emergency_contacts')).rows.length, 0);
+  pass('emergency contact is private to its owner');
+  await db.exec('set role anon');
+  await expectError('unauthenticated contact access denied', 'select * from public.emergency_contacts', [], ['42501']);
+
   await db.exec('reset role');
   await db.query('delete from auth.users where id=$1', [A]);
-  for (const table of ['profiles','conversations','messages','memory_proposals','memories','social_actions']) {
+  for (const table of ['profiles','conversations','messages','memory_proposals','memories','social_actions','emergency_contacts']) {
     const column = table === 'profiles' ? 'id' : 'user_id';
     assert.equal((await db.query(`select count(*)::int as n from public.${table} where ${column}=$1`, [A])).rows[0].n, 0);
   }

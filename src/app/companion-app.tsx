@@ -28,6 +28,12 @@ interface SavedMemory {
   text: string;
   expiresAt: string | null;
 }
+interface ConversationSummary {
+  id: string;
+  title: string | null;
+  startedAt: string;
+  ended: boolean;
+}
 interface ApiErrorBody {
   error?: { message?: string };
   ageRequired?: boolean;
@@ -94,6 +100,8 @@ export function CompanionApp() {
   const [sending, setSending] = useState(false);
   const [ended, setEnded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [confirmDeleteConversation, setConfirmDeleteConversation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +112,8 @@ export function CompanionApp() {
     setMemories([]);
     setEnded(false);
     setConfirmDelete(false);
+    setConversations([]);
+    setConfirmDeleteConversation(null);
   }, []);
 
   /** Moves the UI to the right screen for auth/kill-switch errors. Returns true if handled. */
@@ -144,17 +154,69 @@ export function CompanionApp() {
     if (memoryResponse.ok) setMemories(((await memoryResponse.json()) as { memories: SavedMemory[] }).memories);
   }, []);
 
+  /** Saved conversations, newest first. Returns false if a gate (age, kill switch) took over. */
+  const loadConversations = useCallback(async () => {
+    const response = await fetch("/api/conversations");
+    if (!response.ok) {
+      const body = await readError(response);
+      if (handleGateError(body)) return false;
+      throw new Error(body.error?.message ?? "Could not load your conversations.");
+    }
+    setConversations(((await response.json()) as { conversations: ConversationSummary[] }).conversations);
+    return true;
+  }, [handleGateError]);
+
   const enterApp = useCallback(async () => {
     setError(null);
     try {
-      if (!(await startConversation())) return;
+      if (!(await loadConversations())) return;
       await loadSpace();
+      // A conversation is created when the first message is sent, so empty chats are not saved.
+      setConversationId(null);
+      setMessages([]);
+      setEnded(false);
       setStatus("ready");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Something went wrong.");
       setStatus("age-gate");
     }
-  }, [loadSpace, startConversation]);
+  }, [loadConversations, loadSpace]);
+
+  function newConversation() {
+    setConversationId(null);
+    setMessages([]);
+    setEnded(false);
+    setError(null);
+  }
+
+  async function openConversation(id: string) {
+    setError(null);
+    const response = await fetch(`/api/conversations/${id}`);
+    if (!response.ok) {
+      const body = await readError(response);
+      if (handleGateError(body)) return;
+      if (response.status === 404) await loadConversations();
+      return setError(body.error?.message ?? "That conversation could not be opened.");
+    }
+    const body = (await response.json()) as {
+      conversation: ConversationSummary;
+      messages: { id: string; role: "user" | "assistant"; text: string }[];
+    };
+    setConversationId(id);
+    setMessages(body.messages);
+    setEnded(body.conversation.ended);
+  }
+
+  async function deleteConversation(id: string) {
+    const response = await fetch(`/api/conversations/${id}`, jsonInit("DELETE"));
+    setConfirmDeleteConversation(null);
+    if (!response.ok && response.status !== 404) {
+      return setError((await readError(response)).error?.message ?? "That conversation could not be deleted.");
+    }
+    setConversations((current) => current.filter((item) => item.id !== id));
+    if (id === conversationId) newConversation();
+    await loadSpace();
+  }
 
   useEffect(() => {
     setHello(greeting(new Date().getHours()));
@@ -200,16 +262,26 @@ export function CompanionApp() {
   async function send(event?: FormEvent) {
     event?.preventDefault();
     const content = draft.trim();
-    if (!content || sending || !conversationId || content.length > MAX_MESSAGE) return;
+    if (!content || sending || content.length > MAX_MESSAGE) return;
     setSending(true);
     setError(null);
+    let activeId = conversationId;
+    if (!activeId) {
+      try {
+        activeId = await startConversation();
+      } catch (caught) {
+        setSending(false);
+        return setError(caught instanceof Error ? caught.message : "Could not start a conversation.");
+      }
+      if (!activeId) return setSending(false);
+    }
     const clientRequestId = crypto.randomUUID();
     setMessages((current) => [...current, { id: clientRequestId, role: "user", text: content }]);
     setDraft("");
 
     const post = (id: string) => fetch("/api/chat", jsonInit("POST", { conversationId: id, clientRequestId, content }));
     try {
-      let response = await post(conversationId);
+      let response = await post(activeId);
       // The local server keeps conversations in memory; after a restart, start a new one.
       if (response.status === 404) {
         const fresh = await startConversation();
@@ -233,6 +305,7 @@ export function CompanionApp() {
       ]);
       if (result.conversationEnded) setEnded(true);
       if (result.memoryProposals.length) setProposals((current) => [...current, ...result.memoryProposals]);
+      void loadConversations().catch(() => undefined);
     } catch (caught) {
       setMessages((current) => current.filter((message) => message.id !== clientRequestId));
       setDraft(content);
@@ -346,9 +419,65 @@ export function CompanionApp() {
     <div className="shell">
       <aside className="sidebar">
         <p className="brand">Companion</p>
-        <button type="button" className="quiet" onClick={() => void startConversation()}>
+        <button type="button" className="quiet" onClick={newConversation}>
           New conversation
         </button>
+        <nav className="history" aria-labelledby="history-title">
+          <h2 id="history-title">Your conversations</h2>
+          <p className="fine-print" id="history-note">
+            Conversations are saved so you can come back to them. You can delete any conversation, or all your data, at
+            any time.
+          </p>
+          {conversations.length === 0 ? (
+            <p className="empty">Your conversations will appear here after you send a message.</p>
+          ) : (
+            <ul>
+              {conversations.map((item) => {
+                const label = item.title ?? "Conversation";
+                const when = dateFormat.format(new Date(item.startedAt));
+                return (
+                  <li key={item.id} className={item.id === conversationId ? "current" : undefined}>
+                    {confirmDeleteConversation === item.id ? (
+                      <div className="confirm" role="group" aria-label={`Confirm deleting ${label}`}>
+                        <p>Delete this conversation? This can&apos;t be undone.</p>
+                        <button type="button" className="danger small" onClick={() => void deleteConversation(item.id)}>
+                          Delete
+                        </button>
+                        <button
+                          type="button"
+                          className="quiet small"
+                          onClick={() => setConfirmDeleteConversation(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="history-open"
+                          aria-current={item.id === conversationId ? "true" : undefined}
+                          onClick={() => void openConversation(item.id)}
+                        >
+                          <span className="history-title">{label}</span>
+                          <span className="history-date">{when}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="quiet small"
+                          aria-label={`Delete conversation: ${label}`}
+                          onClick={() => setConfirmDeleteConversation(item.id)}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </nav>
         <div className="sidebar-end">
           {confirmDelete ? (
             <div className="confirm" role="group" aria-label="Confirm data deletion">
@@ -385,7 +514,9 @@ export function CompanionApp() {
           <section className="card chat" aria-label="Conversation">
             <div className="log" role="log" aria-live="polite" ref={logRef}>
               {messages.length === 0 && (
-                <p className="empty">Share how your day went, or anything on your mind. I&apos;m an AI, not a person.</p>
+                <p className="empty">
+                  Share how your day went, or anything on your mind. I&apos;m an AI, not a person.
+                </p>
               )}
               {messages.map((message) => (
                 <div key={message.id} className={`bubble ${message.role}${message.crisis ? " crisis" : ""}`}>
@@ -429,7 +560,7 @@ export function CompanionApp() {
             {ended ? (
               <div className="ended">
                 <p>This conversation has ended.</p>
-                <button type="button" className="primary" onClick={() => void startConversation()}>
+                <button type="button" className="primary" onClick={newConversation}>
                   Start a new conversation
                 </button>
               </div>
@@ -464,7 +595,10 @@ export function CompanionApp() {
 
             <h3>Suggested to remember</h3>
             {proposals.length === 0 ? (
-              <p className="empty">Nothing waiting. Facts you mention can appear here for you to keep or dismiss.</p>
+              <p className="empty">
+                Nothing waiting. When you mention everyday facts, like where you live or what you enjoy, suggestions
+                appear here. Nothing is remembered until you choose Save.
+              </p>
             ) : (
               <ul className="items">
                 {proposals.map((proposal) => (
@@ -540,7 +674,7 @@ export function CompanionApp() {
                 ))}
               </ul>
             )}
-            <p className="fine-print">Test mode: everything here is cleared when the local server restarts.</p>
+            <p className="fine-print">Saved memories stay until they expire or you delete them.</p>
           </section>
         </div>
       </main>

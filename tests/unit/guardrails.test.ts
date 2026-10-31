@@ -376,15 +376,18 @@ describe("7. Data protection", () => {
     });
   });
 
-  it("DP-4: the retention job deletes old messages unless the user kept the thread", async () => {
+  it("DP-4: conversations are kept until deleted by default; a retention limit spares kept threads", async () => {
     const time = clock();
     const { app, session } = await setup({ now: time.now });
     const kept = await app.deps.sessions.create("u1", time.now());
-    await app.deps.sessions.update({ ...kept, kept: true });
+    expect(kept.kept).toBe(true);
+    await app.deps.sessions.update({ ...session, kept: false });
     await app.respond(session.id, "hello");
     await app.respond(kept.id, "hello");
-    time.advance(31 * DAY_MS);
-    expect((await runRetention(app.deps, time.now())).oldMessages).toBe(2);
+    time.advance(365 * DAY_MS);
+    expect((await runRetention(app.deps, time.now())).oldMessages).toBe(0);
+    const limited = { ...DEFAULT_POLICY, messageRetentionMs: 30 * DAY_MS };
+    expect((await runRetention(app.deps, time.now(), limited)).oldMessages).toBe(2);
     expect(await app.deps.messages.listForSession(session.id)).toEqual([]);
     expect(await app.deps.messages.listForSession(kept.id)).toHaveLength(2);
   });

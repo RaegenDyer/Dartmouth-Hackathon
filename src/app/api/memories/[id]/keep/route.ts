@@ -12,7 +12,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   if (!isUuid(id)) return apiError(404, "NOT_FOUND", "This item is not available.");
   try {
-    const memory = await getCompanion().deps.memories.setExpiry(auth.session.actor.userId, id, null, new Date());
+    const memory = await getCompanion({
+      supabase: auth.supabase,
+      userId: auth.session.actor.userId,
+    }).deps.memories.setExpiry(auth.session.actor.userId, id, null, new Date());
     return Response.json({ memory: memoryDto(memory) }, { headers: privateHeaders });
   } catch (error) {
     return memoryErrorResponse(error);

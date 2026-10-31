@@ -1,6 +1,6 @@
 # Supabase preparation
 
-The migration in `migrations/202610300001_initial_schema.sql` is a **draft that has not been applied to the shared Supabase project**. It prepares the relational model, row-level security, memory-approval RPCs, and context invalidation. The application and deployment credentials are separate from this migration and must stay out of source control.
+The migrations `migrations/202610300001_initial_schema.sql` and `migrations/202610310001_chat_persistence.sql` (conversation state, message safety flag, memory-change time, encrypted emergency contact) have **not been applied to the shared Supabase project**. It prepares the relational model, row-level security, memory-approval RPCs, and context invalidation. The application and deployment credentials are separate from this migration and must stay out of source control.
 
 Read [the data model](../docs/data-model.md) before changing the schema. Keep database changes in migrations so contributors work from the same definition.
 

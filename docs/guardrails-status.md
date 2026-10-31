@@ -5,9 +5,10 @@ code with a named test. **Partial**, **Process**, and **N/A** say what is missin
 Unit tests are in `tests/unit/guardrails.test.ts` (named by ID) unless noted;
 E2E tests are in `e2e/guardrails.spec.ts`; evals are in `evals/run.ts`.
 
-The app currently stores data in server process memory for local testing. Rules
-about storage at rest, retention, and multi-instance limits apply fully once the
-Supabase-backed repositories exist; those must implement the same interfaces.
+Data is stored in Supabase through `src/lib/companion/supabase-store.ts` using the
+signed-in user's session and RLS (`COMPANION_STORAGE=memory` keeps the in-process
+store for tests). Rate limits, idempotency, redirect counts, and inactivity tracking
+are still per server process.
 
 ## 1. Crisis safety
 
@@ -79,10 +80,10 @@ Supabase-backed repositories exist; those must implement the same interfaces.
 
 | ID | Status | Where | Notes |
 |---|---|---|---|
-| DP-1 | Partial | `safety/contact.ts`, `resolveDataKey` | Contact is AES-256-GCM encrypted; production refuses to start chat without the key. Messages and memories have no at-rest store yet; the Supabase repositories must encrypt them. |
+| DP-1 | Done (pending migration apply) | `crypto/seal.ts`, `supabase-store.ts`, `resolveDataKey` | Message text, titles, memories, suggestions, weekly suggestions, and the emergency contact are AES-256-GCM encrypted by the app (bound to the owner ID) before reaching Supabase. The key (`CONTACT_ENCRYPTION_KEY`) is held outside the database; production refuses to run without it. Losing the key makes stored text unreadable. |
 | DP-2 | Done | `respond.ts`, tests | |
 | DP-3 | Done | `log.ts` `scrubLogEvent` | Allowlisted keys only; emails, phone numbers, tokens, and free text redacted. |
-| DP-4 | Done (open value) | `runRetention` | Default 30 days, `MESSAGE_RETENTION_DAYS`. A kept-thread flag exists; no UI to keep a thread yet (Conversations screen is outside the approved design scope). |
+| DP-4 | Done (decided) | `runRetention`, `conversations.kept` | Decision 2026-10-31 (Neeraj Kumar): conversations are saved by default and kept until the user deletes them, per conversation or all at once. `MESSAGE_RETENTION_DAYS` can add automatic deletion for threads not kept. |
 | DP-5 | Done | `api/account`; unit + E2E | Removes app data and signs out. The anonymous Supabase auth record needs an admin key to delete and remains. |
 | DP-6 | Open (manual gate) | | Anthropic data-use terms must be confirmed in writing before the pilot. |
 
@@ -108,7 +109,7 @@ Supabase-backed repositories exist; those must implement the same interfaces.
 |---|---|---|
 | Session length cap (DB-3) | 45 minutes | `SESSION_LENGTH_CAP_MINUTES` |
 | Memory expiry (MP-3) | 90 days | `MEMORY_EXPIRY_DAYS` |
-| Message retention (DP-4) | 30 days | `MESSAGE_RETENTION_DAYS` |
+| Message retention (DP-4) | Decided: keep until the user deletes | `MESSAGE_RETENTION_DAYS` (optional) |
 | Inactivity timeout (AA-3) | 30 minutes | `SESSION_INACTIVITY_MINUTES` |
 | Age gate wording (AA-1) | Placeholder | `src/app/companion-app.tsx` |
 | Pilot countries (CS-5) | US | `safety/crisis.ts` |

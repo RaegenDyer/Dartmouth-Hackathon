@@ -13,6 +13,8 @@ export interface ChatSession {
   memoriesReferenced: string[];
   /** DP-4: a kept thread is exempt from message retention. */
   kept: boolean;
+  /** Short title from the first message, shown in the conversation list. */
+  title: string | null;
   tone: string | null;
 }
 
@@ -24,13 +26,18 @@ export interface StoredMessage {
   text: string;
   createdAt: Date;
   safety: boolean;
+  /** The client turn ID; the database rejects a second copy of the same turn. */
+  requestId?: string;
 }
 
 export interface SessionRepository {
   create(userId: string, now: Date, tone?: string | null): Promise<ChatSession>;
   get(sessionId: string): Promise<ChatSession | null>;
   update(session: ChatSession): Promise<void>;
+  /** Newest first. */
   listForUser(userId: string): Promise<ChatSession[]>;
+  /** Deletes one conversation and its messages. Returns false if not found or not owned. */
+  delete(userId: string, sessionId: string): Promise<boolean>;
   deleteAllForUser(userId: string): Promise<void>;
   /** IDs of threads the user chose to keep (DP-4). */
   keptIds(): Promise<Set<string>>;
@@ -56,7 +63,8 @@ export class InMemorySessionRepository implements SessionRepository {
       endedBySafety: false,
       endedBySessionCap: false,
       memoriesReferenced: [],
-      kept: false,
+      kept: true,
+      title: null,
       tone,
     };
     this.rows.set(session.id, session);
@@ -73,8 +81,21 @@ export class InMemorySessionRepository implements SessionRepository {
   }
 
   async listForUser(userId: string) {
-    return [...this.rows.values()].filter((session) => session.userId === userId).map((session) => ({ ...session }));
+    return [...this.rows.values()]
+      .filter((session) => session.userId === userId)
+      .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
+      .map((session) => ({ ...session, memoriesReferenced: [...session.memoriesReferenced] }));
   }
+
+  async delete(userId: string, sessionId: string) {
+    if (this.rows.get(sessionId)?.userId !== userId) return false;
+    this.rows.delete(sessionId);
+    this.onDelete?.(sessionId);
+    return true;
+  }
+
+  /** Lets the message store drop a deleted conversation's messages. */
+  onDelete?: (sessionId: string) => void;
 
   async deleteAllForUser(userId: string) {
     for (const [id, session] of this.rows) if (session.userId === userId) this.rows.delete(id);
@@ -113,6 +134,12 @@ export class InMemoryMessageRepository implements MessageRepository {
       }
     }
     return before - this.rows.length;
+  }
+
+  deleteForSession(sessionId: string) {
+    for (let index = this.rows.length - 1; index >= 0; index -= 1) {
+      if (this.rows[index]?.sessionId === sessionId) this.rows.splice(index, 1);
+    }
   }
 
   allForUser(userId: string) {

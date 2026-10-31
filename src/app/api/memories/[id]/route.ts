@@ -11,7 +11,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const { id } = await params;
   if (!isUuid(id)) return apiError(404, "NOT_FOUND", "This item is not available.");
   try {
-    await getCompanion().deps.memories.delete(auth.session.actor.userId, id);
+    await getCompanion({ supabase: auth.supabase, userId: auth.session.actor.userId }).deps.memories.delete(
+      auth.session.actor.userId,
+      id,
+    );
     return new Response(null, { status: 204, headers: privateHeaders });
   } catch (error) {
     return memoryErrorResponse(error);

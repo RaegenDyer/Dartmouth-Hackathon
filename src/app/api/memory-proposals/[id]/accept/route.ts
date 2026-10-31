@@ -23,7 +23,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if ("response" in body) return body.response;
 
   try {
-    const companion = getCompanion();
+    const companion = getCompanion({ supabase: auth.supabase, userId: auth.session.actor.userId });
     const memory = await approveProposal(
       companion.deps,
       auth.session.actor.userId,

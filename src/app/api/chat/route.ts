@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   if ("response" in body) return body.response;
 
   const { userId } = auth.session.actor;
-  const companion = getCompanion();
+  const companion = getCompanion({ supabase: auth.supabase, userId: auth.session.actor.userId });
   const session = await companion.deps.sessions.get(body.data.conversationId);
   if (!session || session.userId !== userId) {
     return apiError(404, "NOT_FOUND", "This conversation is not available.");
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   const country = request.headers.get("x-vercel-ip-country");
   try {
     const result = await respondOnce(companion, userId, body.data.clientRequestId, () =>
-      companion.respond(session.id, body.data.content, { country }),
+      companion.respond(session.id, body.data.content, { country, requestId: body.data.clientRequestId }),
     );
     return Response.json(
       {

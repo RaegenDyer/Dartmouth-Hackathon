@@ -19,7 +19,7 @@ import { contentWords, enforceMemoryDisclosure } from "../disclosure/enforce";
 import { DEFAULT_POLICY, LIMITS, type GuardrailPolicy } from "../limits";
 import { LEAK_MARKERS, generateWithTimeout, type LlmAdapter } from "../llm/adapter";
 import type { Logger } from "../log";
-import { extractMemoryCandidates } from "../memory/capture";
+import { acceptableModelSuggestion, extractMemoryCandidates } from "../memory/capture";
 import type { MemoryProposalRepository } from "../memory/proposals";
 import { MemoryError, type Memory, type MemoryRepository } from "../memory/store";
 import { patternClassifier, runSafetyCheck, type SafetyClassifier } from "../safety/classifier";
@@ -65,6 +65,15 @@ export interface RespondResult {
 export interface RespondOptions {
   /** ISO country code from the hosting platform when known (CS-5). */
   country?: string | null;
+  /** Client turn ID, stored with both messages of the turn. */
+  requestId?: string;
+}
+
+const TITLE_LENGTH = 60;
+
+function titleFrom(text: string): string {
+  const line = text.replace(/\s+/g, " ").trim();
+  return line.length > TITLE_LENGTH ? `${line.slice(0, TITLE_LENGTH - 1).trimEnd()}…` : line;
 }
 
 export class ConversationError extends Error {
@@ -89,7 +98,7 @@ export function createConversationService(deps: ConversationDeps) {
   /** DB-5: redirect counts per user, logged without text. */
   const redirectCounts = deps.redirectCounts ?? new Map<string, number>();
 
-  async function crisisTurn(session: ChatSession, country: string | null): Promise<RespondResult> {
+  async function crisisTurn(session: ChatSession, country: string | null, requestId?: string): Promise<RespondResult> {
     const at = now();
     // CS-7: timestamp and session ID only.
     deps.log({ event: "safety_triggered", at: at.toISOString(), sessionId: session.id });
@@ -102,6 +111,7 @@ export function createConversationService(deps: ConversationDeps) {
       text: HIDDEN_CRISIS_MESSAGE,
       createdAt: at,
       safety: true,
+      requestId,
     });
     await deps.messages.append({
       sessionId: session.id,
@@ -110,6 +120,7 @@ export function createConversationService(deps: ConversationDeps) {
       text: crisis.text,
       createdAt: at,
       safety: true,
+      requestId,
     });
     await deps.sessions.update({ ...session, endedBySafety: true });
     return {
@@ -124,7 +135,7 @@ export function createConversationService(deps: ConversationDeps) {
     };
   }
 
-  async function sessionCapTurn(session: ChatSession, text: string): Promise<RespondResult> {
+  async function sessionCapTurn(session: ChatSession, text: string, requestId?: string): Promise<RespondResult> {
     const at = now();
     if (!session.endedBySessionCap) {
       deps.log({ event: "session_cap_reached", at: at.toISOString(), sessionId: session.id });
@@ -137,6 +148,7 @@ export function createConversationService(deps: ConversationDeps) {
       text,
       createdAt: at,
       safety: false,
+      requestId,
     });
     await deps.messages.append({
       sessionId: session.id,
@@ -145,6 +157,7 @@ export function createConversationService(deps: ConversationDeps) {
       text: SESSION_CAP_REPLY,
       createdAt: at,
       safety: false,
+      requestId,
     });
     return {
       reply_text: SESSION_CAP_REPLY,
@@ -200,11 +213,11 @@ export function createConversationService(deps: ConversationDeps) {
     // the first of each session, before persistence. Errors and timeouts fail closed.
     const inputCheck = await runSafetyCheck(() => safety.checkUserMessage(text), LIMITS.safetyCheckTimeoutMs);
     if (inputCheck.failed) deps.log({ event: "safety_check_failed", at: now().toISOString(), sessionId: session.id });
-    if (inputCheck.triggered || session.endedBySafety) return crisisTurn(session, country);
+    if (inputCheck.triggered || session.endedBySafety) return crisisTurn(session, country, options.requestId);
 
     // DB-3: session length cap.
     if (session.endedBySessionCap || now().getTime() - session.startedAt.getTime() >= policy.sessionCapMs) {
-      return sessionCapTurn(session, text);
+      return sessionCapTurn(session, text, options.requestId);
     }
 
     const at = now();
@@ -219,6 +232,7 @@ export function createConversationService(deps: ConversationDeps) {
     let route: ReplyRoute = "normal";
     let reply: string;
     let memoriesUsed: string[] = [];
+    let modelSuggestions: string[] = [];
     if (isRevealRequest(text)) {
       route = "reveal_refused";
       reply = REVEAL_REFUSAL;
@@ -245,7 +259,7 @@ export function createConversationService(deps: ConversationDeps) {
       const outputCheck = await runSafetyCheck(() => safety.checkReply(generated.text), LIMITS.safetyCheckTimeoutMs);
       if (outputCheck.failed)
         deps.log({ event: "safety_check_failed", at: now().toISOString(), sessionId: session.id });
-      if (outputCheck.triggered) return crisisTurn(session, country);
+      if (outputCheck.triggered) return crisisTurn(session, country, options.requestId);
       reply = stripLeakedContext(generated.text, LEAK_MARKERS);
       reply = stripPermanencePromises(reply);
       reply = stripBoundaryClaims(reply);
@@ -254,6 +268,7 @@ export function createConversationService(deps: ConversationDeps) {
       const disclosed = enforceMemoryDisclosure(reply, generated.memoriesUsed, eligible);
       reply = disclosed.replyText;
       memoriesUsed = disclosed.memoriesUsed;
+      modelSuggestions = (generated.memorySuggestions ?? []).filter((item) => acceptableModelSuggestion(item, text));
     }
     if (route !== "normal") {
       reply = enforceAiStatus(reply, askedIfHuman);
@@ -278,6 +293,7 @@ export function createConversationService(deps: ConversationDeps) {
     let updated: ChatSession = {
       ...session,
       memoriesReferenced: [...new Set([...session.memoriesReferenced, ...memoriesUsed])],
+      title: session.title ?? titleFrom(text),
     };
     // CD-1: "I'm an AI" disclosure at session start.
     if (!session.disclosed) {
@@ -286,7 +302,15 @@ export function createConversationService(deps: ConversationDeps) {
     }
     await deps.sessions.update(updated);
 
-    await deps.messages.append({ sessionId, userId: session.userId, role: "user", text, createdAt: at, safety: false });
+    await deps.messages.append({
+      sessionId,
+      userId: session.userId,
+      role: "user",
+      text,
+      createdAt: at,
+      safety: false,
+      requestId: options.requestId,
+    });
     await deps.messages.append({
       sessionId,
       userId: session.userId,
@@ -294,15 +318,22 @@ export function createConversationService(deps: ConversationDeps) {
       text: reply,
       createdAt: at,
       safety: false,
+      requestId: options.requestId,
     });
 
     const proposed: { id: string; text: string }[] = [];
     const pending = await deps.proposals.listPending(session.userId);
     const known = new Set([...allMemories, ...pending].map((item) => item.text.toLowerCase()));
-    for (const candidate of extractMemoryCandidates(text)) {
+    const candidates = [...extractMemoryCandidates(text), ...modelSuggestions].map((item) => {
+      const trimmed = item.replace(/\s+/g, " ").trim();
+      return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+    });
+    for (const candidate of candidates) {
+      if (proposed.length >= 2) break;
       if (known.has(candidate.toLowerCase())) continue;
+      known.add(candidate.toLowerCase());
       try {
-        const proposal = await deps.proposals.create(session.userId, candidate, at);
+        const proposal = await deps.proposals.create(session.userId, candidate, at, session.id);
         proposed.push({ id: proposal.id, text: proposal.text });
       } catch (error) {
         if (!(error instanceof MemoryError && error.code === "LIMIT_REACHED")) throw error;
@@ -346,6 +377,7 @@ export async function runRetention(
   policy: Pick<GuardrailPolicy, "messageRetentionMs"> = DEFAULT_POLICY,
 ) {
   const expiredMemories = await deps.memories.deleteExpired(at);
+  if (!Number.isFinite(policy.messageRetentionMs)) return { expiredMemories, oldMessages: 0 };
   const oldMessages = await deps.messages.deleteOlderThan(
     new Date(at.getTime() - policy.messageRetentionMs),
     await deps.sessions.keptIds(),

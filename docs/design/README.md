@@ -45,6 +45,7 @@ raster artwork.
 | Design decision / refinements | Use the warm editorial palette and hierarchy: ivory surfaces, forest-green primary action, sage user bubbles, warm beige assistant bubbles, terracotta accent, serif headings over a sans-serif body. Chat column with a "Your space" side panel and a bottom message composer. No refinement images were generated: this session had no image-generation tool. Until individual raster icons are generated, the UI uses text labels only, with no SVG, emoji, or CSS-drawn icon substitutes. |
 | Approved scope | Chat screen: anonymous session start, conversation thread, message composer, crisis-resource view, "Your space" panel with memory proposals (review/edit/save/dismiss) and saved memories (delete), and sign-out. Other screens (Conversations, Saved, Settings, profile, mobile tab bar) are not yet in scope. |
 | Decision date | 2026-10-31 |
+| Scope extension | 2026-10-31, Neeraj Kumar (from user feedback): a "Your conversations" list in the chat sidebar with open and per-conversation delete, and a notice that conversations are saved by default. Same 01 direction; text labels only. |
 
 The user requested a catalog of 100 design masters, image-generated app concepts
 informed by those references, and generated raster artwork for custom app icons

@@ -44,6 +44,7 @@ async function routes() {
   return {
     anonymous: await import("@/app/api/auth/anonymous/route"),
     conversations: await import("@/app/api/conversations/route"),
+    conversation: await import("@/app/api/conversations/[id]/route"),
     chat: await import("@/app/api/chat/route"),
     proposals: await import("@/app/api/memory-proposals/route"),
     accept: await import("@/app/api/memory-proposals/[id]/accept/route"),
@@ -69,6 +70,7 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test-only");
   vi.stubEnv("LLM_ADAPTER", "mock");
+  vi.stubEnv("COMPANION_STORAGE", "memory");
   delete (globalThis as { __companionStore?: unknown }).__companionStore;
   delete (globalThis as { __anonLimiter?: unknown }).__anonLimiter;
   currentUser = null;
@@ -166,7 +168,9 @@ describe("companion routes", () => {
     const retry = (await (await say(conversationId, "Hi there", requestId)).json()) as { reply: string };
     expect(retry.reply).toBe(first.reply);
     const { getCompanion } = await import("@/lib/companion/server");
-    expect(await getCompanion().deps.messages.listForSession(conversationId)).toHaveLength(2);
+    expect(
+      await getCompanion({ supabase: {} as never, userId: alice }).deps.messages.listForSession(conversationId),
+    ).toHaveLength(2);
   });
 
   it("rejects oversized and malformed bodies", async () => {
@@ -186,7 +190,7 @@ describe("companion routes", () => {
     await say(conversationId, "I live in Hanover. I like chess.");
     const { account } = await routes();
     const { getCompanion } = await import("@/lib/companion/server");
-    const companion = getCompanion();
+    const companion = getCompanion({ supabase: {} as never, userId: alice });
     const [proposal] = await companion.deps.proposals.listPending(alice);
     await companion.deps.memories.create(alice, proposal?.text ?? "x", new Date());
 
@@ -225,5 +229,49 @@ describe("companion routes", () => {
     }
     currentUser = null;
     expect((await start()).status).toBe(429);
+  });
+
+  it("saves conversations by default and lets the owner list, reopen, and delete them", async () => {
+    currentUser = alice;
+    const first = await newConversation();
+    await say(first, "I live in Hanover. I like chess.");
+    const second = await newConversation();
+    await say(second, "Class got cancelled so I read in the park");
+    const { conversations, conversation } = await routes();
+
+    const list = (await (await conversations.GET()).json()) as { conversations: { id: string; title: string }[] };
+    expect(list.conversations.map((item) => item.id).sort()).toEqual([first, second].sort());
+    expect(list.conversations.find((item) => item.id === first)?.title).toBe("I live in Hanover. I like chess.");
+
+    const opened = (await (
+      await conversation.GET(new Request(`${origin}/api/conversations/${first}`), params(first))
+    ).json()) as {
+      messages: { role: string; text: string }[];
+    };
+    expect(opened.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
+    expect(opened.messages[0]?.text).toBe("I live in Hanover. I like chess.");
+
+    currentUser = bob;
+    expect((await conversation.GET(new Request(`${origin}/api/conversations/${first}`), params(first))).status).toBe(
+      404,
+    );
+    const foreignDelete = await conversation.DELETE(
+      new Request(`${origin}/api/conversations/${first}`, { method: "DELETE", headers: { origin } }),
+      params(first),
+    );
+    expect(foreignDelete.status).toBe(404);
+
+    currentUser = alice;
+    const deleted = await conversation.DELETE(
+      new Request(`${origin}/api/conversations/${first}`, { method: "DELETE", headers: { origin } }),
+      params(first),
+    );
+    expect(deleted.status).toBe(204);
+    const after = (await (await conversations.GET()).json()) as { conversations: { id: string }[] };
+    expect(after.conversations.map((item) => item.id)).toEqual([second]);
+    const { getCompanion } = await import("@/lib/companion/server");
+    const companion = getCompanion({ supabase: {} as never, userId: alice });
+    expect(await companion.deps.messages.listForSession(first)).toEqual([]);
+    expect((await companion.deps.proposals.listPending(alice)).every((item) => item.sessionId !== first)).toBe(true);
   });
 });

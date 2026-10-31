@@ -12,7 +12,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   if (!isUuid(id)) return apiError(404, "NOT_FOUND", "This item is not available.");
   try {
-    await dismissProposal(getCompanion().deps, auth.session.actor.userId, id);
+    await dismissProposal(
+      getCompanion({ supabase: auth.supabase, userId: auth.session.actor.userId }).deps,
+      auth.session.actor.userId,
+      id,
+    );
     return new Response(null, { status: 204, headers: privateHeaders });
   } catch (error) {
     return memoryErrorResponse(error);

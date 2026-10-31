@@ -7,7 +7,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Skip static assets and the public liveness route.
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/health|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)"],
 };

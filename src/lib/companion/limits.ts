@@ -39,7 +39,9 @@ export interface GuardrailPolicy {
 export const DEFAULT_POLICY: GuardrailPolicy = {
   sessionCapMs: 45 * MINUTE_MS,
   memoryExpiryMs: 90 * DAY_MS,
-  messageRetentionMs: 30 * DAY_MS,
+  // DP-4 decision (Neeraj Kumar, 2026-10-31): conversations are saved until the
+  // user deletes them. Set MESSAGE_RETENTION_DAYS to add automatic deletion.
+  messageRetentionMs: Number.POSITIVE_INFINITY,
   inactivityMs: 30 * MINUTE_MS,
 };
 

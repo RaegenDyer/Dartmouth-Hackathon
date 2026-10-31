@@ -8,6 +8,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const auth = await requireSession();
   if ("response" in auth) return auth.response;
-  const memories = await getCompanion().deps.memories.listActive(auth.session.actor.userId, new Date());
+  const memories = await getCompanion({
+    supabase: auth.supabase,
+    userId: auth.session.actor.userId,
+  }).deps.memories.listActive(auth.session.actor.userId, new Date());
   return Response.json({ memories: memories.map(memoryDto) }, { headers: privateHeaders });
 }

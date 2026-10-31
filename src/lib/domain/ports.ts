@@ -50,8 +50,8 @@ export interface ConversationModel {
 
 export interface BoundaryPolicy {
   // A product-routing decision, not a clinical assessment or diagnosis.
-  evaluate(input: { actor: Actor; userMessage: string }): Promise<
-    | { outcome: "continue" }
-    | { outcome: "support_handoff"; resourceRegion: string | null }
-  >;
+  evaluate(input: {
+    actor: Actor;
+    userMessage: string;
+  }): Promise<{ outcome: "continue" } | { outcome: "support_handoff"; resourceRegion: string | null }>;
 }

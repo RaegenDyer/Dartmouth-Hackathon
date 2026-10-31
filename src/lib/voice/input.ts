@@ -2,9 +2,10 @@ import { z } from "zod";
 
 export const MAX_DICTATION_CHARACTERS = 1000;
 
-const textSchema = z.string().max(MAX_DICTATION_CHARACTERS).refine(
-  (text) => !text.includes("\u0000") && !/[\uD800-\uDFFF]/u.test(text),
-);
+const textSchema = z
+  .string()
+  .max(MAX_DICTATION_CHARACTERS)
+  .refine((text) => !text.includes("\u0000") && !/[\uD800-\uDFFF]/u.test(text));
 const transcriptSchema = z.strictObject({
   type: z.literal("transcript"),
   text: textSchema,
@@ -19,7 +20,8 @@ const vapiTranscriptSchema = z.object({
 
 export type VoiceTranscriptEvent = z.infer<typeof transcriptSchema>;
 export type VoiceInputState = "connecting" | "listening" | "stopping" | "stopped";
-export type VoiceInputEvent = VoiceTranscriptEvent
+export type VoiceInputEvent =
+  | VoiceTranscriptEvent
   | { type: "state"; state: VoiceInputState }
   | { type: "error"; code: "PERMISSION_DENIED" | "UNAVAILABLE" | "TIMEOUT" };
 
@@ -70,9 +72,7 @@ function validateText(text: string): void {
 }
 
 function appendSegment(base: string, segment: string): string {
-  const combined = base && segment
-    ? `${base}${/\s$/u.test(base) ? "" : " "}${segment}`
-    : base || segment;
+  const combined = base && segment ? `${base}${/\s$/u.test(base) ? "" : " "}${segment}` : base || segment;
   if (combined.length > MAX_DICTATION_CHARACTERS) {
     throw new RangeError("Dictation exceeds the 1000 character message limit.");
   }

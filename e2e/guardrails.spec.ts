@@ -18,7 +18,9 @@ async function mockSignedIn(page: Page, chatReply: Record<string, unknown>) {
       case "/api/auth/session":
         return json(route, { authenticated: true, userId: "u", isAnonymous: true, ageConfirmed: true });
       case "/api/conversations":
-        return json(route, { conversationId: "c" }, 201);
+        return route.request().method() === "POST"
+          ? json(route, { conversationId: "c" }, 201)
+          : json(route, { conversations: [] });
       case "/api/memory-proposals":
         return json(route, { proposals: [] });
       case "/api/memories":

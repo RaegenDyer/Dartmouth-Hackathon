@@ -40,7 +40,10 @@ are in `src/lib/contracts/index.ts`.
 | `DELETE /api/account` | Same-origin; deletes the user's app data (DP-5) and signs out; 204 | Local |
 | `GET /api/profile` | Current actor's profile and version | Planned |
 | `PATCH /api/profile` | `updateProfileSchema`; saved profile | Planned |
-| `POST /api/conversations` | `createConversationSchema`; `{conversationId}` (no version yet) | Local |
+| `POST /api/conversations` | `createConversationSchema`; `{conversationId}` (no version yet) | Implemented |
+| `GET /api/conversations` | The caller's saved conversations `{id,title,startedAt,ended}`, newest first | Implemented |
+| `GET /api/conversations/:id` | One conversation and its messages | Implemented |
+| `DELETE /api/conversations/:id` | Deletes the conversation, its messages, and its pending suggestions; 204 | Implemented |
 | `GET /api/conversations/:id/messages` | Cursor-paginated visible history | Planned |
 | `POST /api/chat` | `sendMessageSchema`; one JSON reply `{reply,route,safetyTriggered,conversationEnded,crisis,memoriesUsed,memoryProposals,socialAction}` instead of SSE; 503 `chatDisabled` when the kill switch is on; repeated `clientRequestId` returns the same turn | Local |
 | `GET /api/memory-proposals` | Pending proposals owned by actor | Local |

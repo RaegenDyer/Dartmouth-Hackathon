@@ -6,16 +6,16 @@ const contextEpoch = z.number().int().nonnegative();
 const timestamp = z.iso.datetime({ offset: true });
 // JSON permits NUL and lone UTF-16 surrogates, but PostgreSQL UTF-8 text does not.
 // Reject them before persistence; the Unicode regex still allows valid emoji.
-const persistedText = z.string().trim().refine(
-  (value) => !value.includes("\u0000") && !/[\uD800-\uDFFF]/u.test(value),
-  { message: "Text must be valid Unicode without null characters." },
-);
+const persistedText = z
+  .string()
+  .trim()
+  .refine((value) => !value.includes("\u0000") && !/[\uD800-\uDFFF]/u.test(value), {
+    message: "Text must be valid Unicode without null characters.",
+  });
 const memoryContent = persistedText.min(1).max(500);
 
 export const scenarioSchema = z.enum(["check_in", "social_step"]);
-export const socialActionStatusSchema = z.enum([
-  "proposed", "accepted", "completed", "dismissed",
-]);
+export const socialActionStatusSchema = z.enum(["proposed", "accepted", "completed", "dismissed"]);
 
 // Identity and message history come from the verified session and database.
 // Strict objects reject client-supplied userId, role, and fabricated history.
@@ -60,8 +60,14 @@ export const updateSocialActionSchema = z.strictObject({
 });
 
 export const apiErrorCodeSchema = z.enum([
-  "UNAUTHENTICATED", "INVALID_REQUEST", "NOT_FOUND", "CONFLICT",
-  "RATE_LIMITED", "PROVIDER_UNAVAILABLE", "CONTEXT_CHANGED", "INTERNAL_ERROR",
+  "UNAUTHENTICATED",
+  "INVALID_REQUEST",
+  "NOT_FOUND",
+  "CONFLICT",
+  "RATE_LIMITED",
+  "PROVIDER_UNAVAILABLE",
+  "CONTEXT_CHANGED",
+  "INTERNAL_ERROR",
 ]);
 
 export const chatEventSchema = z.discriminatedUnion("type", [

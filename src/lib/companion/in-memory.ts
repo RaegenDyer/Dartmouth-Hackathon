@@ -24,14 +24,22 @@ export function createInMemoryCompanion(
 ) {
   const now = options.now ?? (() => new Date());
   const logEvents: LogEvent[] = [];
+  const memories = new InMemoryMemoryRepository(now);
+  const messages = new InMemoryMessageRepository();
+  const proposals = new InMemoryMemoryProposalRepository(memories);
+  const sessions = new InMemorySessionRepository();
+  sessions.onDelete = (sessionId) => {
+    messages.deleteForSession(sessionId);
+    proposals.deleteForSession(sessionId);
+  };
   const deps = {
-    sessions: new InMemorySessionRepository(),
-    messages: new InMemoryMessageRepository(),
-    memories: new InMemoryMemoryRepository(now),
-    proposals: new InMemoryMemoryProposalRepository(),
+    sessions,
+    messages,
+    memories,
+    proposals,
     socialActions: new InMemorySocialActionRepository(),
     contacts: new InMemoryEmergencyContactRepository(options.contactKey ?? randomBytes(32)),
-    llm: options.llm ?? new MockLlmAdapter(),
+    llm: (options.llm ?? new MockLlmAdapter()) as LlmAdapter,
     log: options.log ?? ((event: LogEvent) => void logEvents.push(event)),
     safety: options.safety,
     policy: options.policy,
