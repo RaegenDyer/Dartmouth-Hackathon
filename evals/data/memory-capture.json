@@ -248,5 +248,95 @@
     "id": "cap-050",
     "text": "I just started a pottery class.",
     "shouldCapture": true
+  },
+  {
+    "id": "cap-051",
+    "text": "Honestly, I really enjoy bouldering on weekends.",
+    "shouldCapture": true
+  },
+  {
+    "id": "cap-052",
+    "text": "Well, honestly, I'm currently studying computer science.",
+    "shouldCapture": true
+  },
+  {
+    "id": "cap-053",
+    "text": "I've recently moved to Hanover.",
+    "shouldCapture": true
+  },
+  {
+    "id": "cap-054",
+    "text": "I feel overwhelmed, and I work at Dartmouth.",
+    "shouldCapture": true
+  },
+  {
+    "id": "cap-055",
+    "text": "I enjoy hiking and I'm feeling lonely.",
+    "shouldCapture": true
+  },
+  {
+    "id": "cap-056",
+    "text": "I have asthma and I play guitar.",
+    "shouldCapture": true
+  },
+  {
+    "id": "cap-057",
+    "text": "I live in Hanover and I play guitar and I enjoy bouldering.",
+    "shouldCapture": true
+  },
+  {
+    "id": "cap-058",
+    "text": "My friend said \"I enjoy hiking and I play guitar.\"",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-059",
+    "text": "\"I like hiking and I play guitar.\"",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-060",
+    "text": "If I moved to Hanover and I joined the running club, would I fit in?",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-061",
+    "text": "I have never said I enjoy hiking and I play guitar.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-062",
+    "text": "I enjoy hiking. Please don't remember this.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-063",
+    "text": "I live in Hanover. Keep this out of your memories.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-064",
+    "text": "Off the record, I like chess.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-065",
+    "text": "I really feel so lonely.",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-066",
+    "text": "I live in 上海.",
+    "shouldCapture": true
+  },
+  {
+    "id": "cap-067",
+    "text": "My friend said \"I enjoy hiking. I play guitar.\"",
+    "shouldCapture": false
+  },
+  {
+    "id": "cap-068",
+    "text": "My friend said 'I enjoy hiking. I play guitar.'",
+    "shouldCapture": false
   }
 ]

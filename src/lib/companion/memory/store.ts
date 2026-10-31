@@ -10,6 +10,11 @@ export interface Memory {
   editedByUser: boolean;
 }
 
+export interface MemoryUpdate {
+  text?: string;
+  expiresAt?: Date | null;
+}
+
 export class MemoryError extends Error {
   constructor(
     readonly code: "NOT_FOUND" | "LIMIT_REACHED" | "INVALID_TEXT" | "INVALID_EXPIRY",
@@ -29,6 +34,8 @@ export interface MemoryRepository {
   /** Unexpired memories only. This is the only source of model context. */
   listActive(userId: string, now: Date): Promise<Memory[]>;
   create(userId: string, text: string, now: Date, expiresAt?: Date | null): Promise<Memory>;
+  /** Validates and applies the supplied fields together, advancing context once. */
+  update(userId: string, id: string, changes: MemoryUpdate, now: Date): Promise<Memory>;
   updateText(userId: string, id: string, text: string): Promise<Memory>;
   setExpiry(userId: string, id: string, expiresAt: Date | null, now: Date): Promise<Memory>;
   delete(userId: string, id: string): Promise<void>;
@@ -51,6 +58,24 @@ export function validateMemoryText(text: string): string {
     throw new MemoryError("INVALID_TEXT", `Memory text must be 1-${LIMITS.maxMemoryLength} characters.`);
   }
   return trimmed;
+}
+
+export function validateMemoryUpdate(input: MemoryUpdate, now: Date): MemoryUpdate {
+  const changes: MemoryUpdate = {};
+  if (input.text !== undefined) changes.text = validateMemoryText(input.text);
+  if (input.expiresAt !== undefined) {
+    if (
+      input.expiresAt !== null &&
+      (!Number.isFinite(input.expiresAt.getTime()) || input.expiresAt.getTime() <= now.getTime())
+    ) {
+      throw new MemoryError("INVALID_EXPIRY", "Expiry must be in the future, or cleared.");
+    }
+    changes.expiresAt = input.expiresAt === null ? null : new Date(input.expiresAt);
+  }
+  if (changes.text === undefined && changes.expiresAt === undefined) {
+    throw new MemoryError("INVALID_TEXT", "Nothing to change.");
+  }
+  return changes;
 }
 
 export function isExpired(memory: Pick<Memory, "expiresAt">, now: Date): boolean {
@@ -116,25 +141,23 @@ export class InMemoryMemoryRepository implements MemoryRepository {
     return clone(memory);
   }
 
-  async updateText(userId: string, id: string, text: string) {
+  async update(userId: string, id: string, input: MemoryUpdate, now: Date) {
+    const changes = validateMemoryUpdate(input, now);
     const memory = this.owned(userId, id);
-    memory.text = validateMemoryText(text);
-    memory.editedByUser = true;
-    this.changes.set(userId, new Date(this.clock()));
-    this.advanceRevision(userId);
-    return clone(memory);
-  }
-
-  async setExpiry(userId: string, id: string, expiresAt: Date | null, now: Date) {
-    const memory = this.owned(userId, id);
-    if (expiresAt && (!Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= now.getTime())) {
-      throw new MemoryError("INVALID_EXPIRY", "Expiry must be in the future, or cleared.");
-    }
-    memory.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    if (changes.text !== undefined) memory.text = changes.text;
+    if (changes.expiresAt !== undefined) memory.expiresAt = changes.expiresAt;
     memory.editedByUser = true;
     this.changes.set(userId, new Date(now));
     this.advanceRevision(userId);
     return clone(memory);
+  }
+
+  async updateText(userId: string, id: string, text: string) {
+    return this.update(userId, id, { text }, this.clock());
+  }
+
+  async setExpiry(userId: string, id: string, expiresAt: Date | null, now: Date) {
+    return this.update(userId, id, { expiresAt }, now);
   }
 
   async delete(userId: string, id: string) {

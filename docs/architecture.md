@@ -160,6 +160,13 @@ operation to promote the proposal to an approved memory. Show success only after
 the write succeeds. Rejected proposals must not enter model context.
 
 Approved-memory changes advance a revision and reset conversation context epochs.
+Saved-memory text and expiry edits are validated together before one repository
+update. Supabase applies both fields in one SQL statement, and the in-memory
+repository advances context once. This prevents a failed expiry from partially
+changing text; optimistic version checks across competing requests are still
+future work. The editor preserves the precise expiry unless its date/keep choice
+changes, and uses local calendar dates rather than ISO UTC dates.
+
 Old transcript turns can remain visible as history but must not be sent as fresh
 model context after a reset. Otherwise a deleted fact could be rediscovered from
 the old transcript. Expiry is a time condition: filter it at every retrieval and

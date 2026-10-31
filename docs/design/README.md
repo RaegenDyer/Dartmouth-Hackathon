@@ -57,6 +57,14 @@ raster artwork.
 | Planned-feature placeholders | 2026-10-31, Neeraj Kumar: visible but disabled controls with a honey "coming soon" tag, placed where each feature will live: scenario chips above the composer (new conversation only), a microphone button (generated raster icon) beside send, companion style options (listener, practical, playful) in the sidebar and history tab, and "I did it" / "skip" on the weekly step card |
 | Decision date | 2026-10-31 |
 
+Functional quality pass, October 31: the existing Warm hearth direction is
+preserved. The signed-in app uses viewport-sized panes with a single transcript
+scroller; tablet users switch chat/memories through the existing labeled rail,
+and phone users retain bottom tabs. Network failures use the existing notice and
+button styles for retry, rather than displaying environment setup instructions
+to visitors. These are behavior/accessibility corrections within the approved
+scope, not a new visual direction or asset selection.
+
 ### Previous decision: Candid minimal (superseded by Warm hearth)
 
 | Field | Current value |
